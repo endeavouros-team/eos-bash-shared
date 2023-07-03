@@ -71,7 +71,7 @@ IsEndeavourOS() {
 }
 
 DiskSpace() {
-    local available=$(LANG=C /usr/bin/df | /usr/bin/grep -w "/" | /usr/bin/awk '{print $4}' | head -n 1)
+    local available=$(LANG=C /usr/bin/df | /usr/bin/grep -E '[[:blank:]]/$' | /usr/bin/awk '{print $4}')
     local min=$((min_free_bytes / 1000))  # use compatible numbers
 
     if [ $available -lt $min ] ; then
