@@ -71,13 +71,13 @@ IsEndeavourOS() {
 }
 
 DiskSpace() {
-    local available=$(LANG=C /usr/bin/df | /usr/bin/grep -w "/" | /usr/bin/awk '{print $4}')
-    local min=$((min_free_bytes / 1000))  # use compatible numbers
+    local available=$(findmnt / -nbo avail)
+    local min=$min_free_bytes
 
     if [ $available -lt $min ] ; then
         {
         echo "WARNING: your root partition (/) has only $available bytes of free space."
-        if [ $(du -d0 /var/cache/pacman/pkg | awk '{print $1}') -gt $min ] ; then
+        if [ $(du -b -d0 /var/cache/pacman/pkg | awk '{print $1}') -gt $min ] ; then
             printf "\nFor example, cleaning up the package cache may help.\n"
             printf "Command 'sudo paccache -rk1' would do this:"
             paccache -dk1
