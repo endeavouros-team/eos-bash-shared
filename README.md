@@ -15,6 +15,8 @@ eos-FindAppIcon | Find a suitable icon path for an app.
 eos-pkg-changelog | (Unavailable) Show the changelog of (most) EndeavourOS packages.<br>Usage: `eos-pkg-changelog <package-name>`
 eos-pkginfo | (Unavailable) Show usage and/or developer information about an EndeavourOS/Arch/AUR package.<br>Package can be identified by its name, included program, or file path.<br>Usage: `eos-pkginfo {<package-name> \| <program-name> \| <file path>`}
 eos-pkginfo.completion | (Unavailable) Bash completion for eos-pkginfo.<br>Note: does not support completion for AUR packages because of performance.
+eos-reboot-required.hook | Runs `eos-reboot-required2` after any of the listed essential system packages have been updated.
+eos-reboot-required2 | Filters and notifies packages that may need a notificication about a recommended reboot.
 eos-script-lib-yad | Common bash code for various EOS apps.
 eos-script-lib-yad.conf | Configuration file for eos-script-lib-yad.
 eos-sendlog | Send a text file to pastebin, and save the returned URL to ~/.config/eos-sendlog.txt.<br>Example: `cat log.txt \| eos-sendlog`
