@@ -3,9 +3,13 @@
 # Package updater for EndeavourOS and Arch.
 # Handles db lock file, keyrings, syncing, and optionally AUR with given AUR helper.
 
+echo2()   { echo "$@" >&2 ; }
+printf2() { printf "$@" >&2 ; }
+WARN()    { echo2 "==> $progname: warning: $1" ; }
+
 Options() {
     local opts
-    local lopts="nvidia,helper:,min-free-bytes:,paru,yay,pacman,help"
+    local lopts="dump-options,nvidia,no-keyring,helper:,min-free-bytes:,paru,yay,pacman,help"
     local sopts="h"
 
     opts="$(/usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
@@ -18,22 +22,31 @@ Options() {
         case "$1" in
             --nvidia)
                 if IsEndeavourOS ; then
-                    nvidia=eos-kernel-nvidia-update-check
+                    nvidia=yes
                 else
-                    echo "Sorry, option $1 works only in EndeavourOS. Option ignored." >&2
+                    WARN "sorry, option $1 works only in EndeavourOS. Option ignored."
                 fi
                 ;;
+            --no-keyring) keyring=no ;;
             --min-free-bytes) min_free_bytes="$2" ; shift ;;
             --helper) helper="$2" ; shift ;;
             --paru | --yay | --pacman) helper="${1/--/}" ;;
+            --dump-options)
+                lopts="${lopts//:/}"
+                lopts="--${lopts//,/ --}"
+                sopts="${sopts//:/}"
+                sopts="$(echo "$sopts" | sed -E 's|([a-z])| -\1|g')"
+                echo $lopts $sopts
+                exit 0
+                ;;
 
             -h | --help)
                 cat <<EOF >&2
 Package updater for EndeavourOS and Arch
 Handles:
-- disk space check
-- pacman db lock
 - keyrings
+- pacman db lock
+- disk space check
 - sync after update
 and optionally
 - AUR with given AUR helper
@@ -43,14 +56,17 @@ Usage: $progname [options]
 Options:
   --help, -h         This help.
   --nvidia           Check also nvidia driver vs. kernel updates.
-  --helper           AUR helper name. Supported: yay, paru, pacman. Default: pacman.
-                     Others supporting option -Sua should work as well.
+  --no-keyring       Do not try to update keyrings first.
+  --helper           AUR helper name. Supported: yay, paru, pacman.
+                     Default: pacman.
+                     Other AUR helpers supporting option -Sua like yay should work as well.
   --paru             Same as --helper=paru.
   --yay              Same as --helper=yay.
-  --pacman           Same as --helper=pacman. Default.
+  --pacman           Same as --helper=pacman. Default. (Note: pacman does not support AUR directly)
   --min-free-bytes   Minimal amount of free space (in bytes) that the root partition should have
                      before updating. Otherwise a warning message will be displayed.
                      Default: $min_free_bytes
+  --dump-options     Shows all supported options. Used for bash command completion.
 EOF
                 exit 0
                 ;;
@@ -76,22 +92,21 @@ DiskSpace() {
 
     if [ $available -lt $min ] ; then
         {
-        echo "WARNING: your root partition (/) has only $available bytes of free space."
-        if [ $(du -b -d0 /var/cache/pacman/pkg | awk '{print $1}') -gt $min ] ; then
-            printf "\nFor example, cleaning up the package cache may help.\n"
-            printf "Command 'sudo paccache -rk1' would do this:"
-            paccache -dk1
-            printf "Command 'sudo paccache -ruk0' would do this:"
-            paccache -duk0
-            echo ""
-        fi
+            WARN "your root partition (/) has only $available bytes of free space."
+            if [ $(du -b -d0 /var/cache/pacman/pkg | awk '{print $1}') -gt $min ] ; then
+                printf "\nFor example, cleaning up the package cache may help.\n"
+                printf "Command 'sudo paccache -rk1' would do this:"
+                paccache -dk1
+                printf "Command 'sudo paccache -ruk0' would do this:"
+                paccache -duk0
+                echo ""
+            fi
         } >&2
     fi
 }
 
 Main() {
     local progname="$(/usr/bin/basename "$0")"
-    local nvidia=":"
     local helper="pacman"
     local min_free_bytes=$((1000 * 1000 * 1000))  # default: 1 GB
 
@@ -100,23 +115,28 @@ Main() {
     local rmopt=f
     local isEndeavourOS=""
 
+    local subopts=()
+    local keyring=yes                             # user may disable keyring check with --no-keyring
+    local nvidia=no                               # user may enable Nvidia check with --nvidia
+
     Options "$@"
 
-    echo "$helper update with additional and useful checks" >&2
+    [ $nvidia  = yes ] && subopts+=(--nvidia)
+    [ $keyring = yes ] && subopts+=(--keyrings)
+
+    echo2 "$helper update with additional features"
 
     DiskSpace
 
     if [ -e $lock ] && fuser $lock &>/dev/null ; then
         rmopt=i
     fi
-    local keyrings=(archlinux-keyring)
-    IsEndeavourOS && keyrings+=(endeavouros-keyring)
-    echo "Updating..."
+    echo2 "Updating..."
     if [ "$helper" = "pacman" ] ; then
-        sudo bash -c "rm -$rmopt $lock; [ -e $lock ] || { $nvidia && pacman -Sy --noconfirm --needed ${keyrings[*]} && pacman -Su && sync ; }"
+        sudo bash -c "rm -$rmopt $lock; [ -e $lock ] || { pacman -Sy && eos-update-extras ${subopts[*]} && pacman -Su && sync ; }"
     else
         helper2="/usr/bin/sudo -u $LOGNAME $helper -Sua"
-        sudo bash -c "rm -$rmopt $lock; [ -e $lock ] || { $nvidia && pacman -Sy --noconfirm --needed ${keyrings[*]} && pacman -Su && $helper2 ; sync ; }"
+        sudo bash -c "rm -$rmopt $lock; [ -e $lock ] || { pacman -Sy && eos-update-extras ${subopts[*]} && pacman -Su && $helper2 ; sync ; }"
     fi
 }
 

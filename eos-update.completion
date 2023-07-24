@@ -1,0 +1,20 @@
+# bash completion for eos-update        -*- shell-script -*-
+
+_eos-update_complete() {
+    COMPREPLY=( $(compgen -W "$1" -- "$cur") )
+    [[ $COMPREPLY == *= ]] && compopt -o nospace
+}
+
+_eos-update_() 
+{
+    local cur prev #words cword split
+    _init_completion -s || return
+
+    local options=$(eos-update --dump-options)
+    case "$prev" in
+        --min-free-bytes) _eos-update_complete "{1..9}" ;;
+        --helper)         _eos-update_complete "yay paru pacman" ;;
+        *)                _eos-update_complete "$options" ;;
+    esac
+}
+complete -F _eos-update_    eos-update

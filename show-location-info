@@ -39,7 +39,7 @@ Options:
   -h, --help       This help.
   -l, --tolower    Convert letters to lower case on the output.
   -t, --timeout    Max number of seconds to wait for a response from
-                   $infourl (default: $timeout_default).
+                   the location service (default: $timeout_default).
   -u, --url        The URL used for getting the location information.
 EOF
                 exit 0
@@ -62,41 +62,64 @@ EOF
 }
 
 Main() {
-    local progname="$(basename "$0")"
+    local -r progname="${0##*/}"
 
     # default values
-    local timeout_default=30
+    local -r timeout_default=30
     local timeout=$timeout_default
     local tolower=no
     local item=""
+    local supported_urls=(
+        https://ipinfo.io
+        https://ipapi.co
+    )
 
     # supported values
     local items=(city country hostname ip loc org postal region timezone "")   # "" means: all
 
+    source /etc/eos-script-lib-yad.conf || return 1
+
     # info source
     local infourl="$EOS_LOCATION_PROVIDER_URL"
-    [ -n "$infourl" ] || infourl="https://ipinfo.io"
+    local url
 
     Options "$@"
 
-    case "$infourl" in
-        https://ipinfo.io) ;;
-        https://ipapi.co)
-            case "$item" in
-                hostname | loc | "")
-                    DIE "sorry, item '$item' is not supported for url $infourl"
-                    ;;
-            esac
-            ;;
-        *) DIE "'$infourl' is not supported. See /etc/eos-script-lib-yad.conf for supported URLs" ;;
-    esac
-
-    # show the wanted location info
-    local output="$(LANG=C curl -Lsm $timeout $infourl/$item)"
-    if [ "$tolower" = "yes" ] ; then
-        output=$(echo "$output" | tr '[:upper:]' '[:lower:]')
+    if [ -n "$infourl" ] ; then
+        # add the given url as first in list
+        supported_urls=($(printf "%s\n" "${supported_urls[@]}" | grep -vw "$infourl"))
+        supported_urls=("$infourl" "${supported_urls[@]}")
     fi
-    echo "$output"
+
+    for url in "${supported_urls[@]}" ; do
+        case "$url" in
+            https://ipinfo.io) ;;
+            https://ipapi.co)
+                case "$item" in
+                    hostname | loc | "")
+                        echo "sorry, item '$item' is not supported by url $url" >&2
+                        continue
+                        ;;
+                esac
+                ;;
+            *) DIE "'$url' is not supported. See /etc/eos-script-lib-yad.conf for supported URLs" ;;
+        esac
+
+        # get and show the wanted location info
+
+        local output="$(LANG=C curl --fail -Lsm $timeout $url/$item)"
+
+        if [ $? -eq 0 ] ; then
+            if [ "$tolower" = "yes" ] ; then
+                output=$(echo "$output" | tr '[:upper:]' '[:lower:]')
+            fi
+            echo "$output"
+            return 0
+        fi
+    done
+
+    echo "  ==> $progname: failed" >&2
+    return 1
 }
 
 Main "$@"
