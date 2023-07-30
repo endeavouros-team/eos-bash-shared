@@ -153,7 +153,7 @@ eos_select_browser() {
     # If _WELCOME_BROWSER is not exported, use the user configurable list of browsers
     # in file /etc/eos-script-lib-yad.conf
 
-    local old_list="xdg-open exo-open firefox chromium vivaldi-stable opera"   # for backwards compatibility
+    local old_list="xdg-open exo-open kde-open firefox chromium vivaldi-stable opera"   # for backwards compatibility
     local browser
 
     for browser in "${EOS_PREFERRED_BROWSERS[@]}" $old_list
