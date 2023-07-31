@@ -41,7 +41,7 @@ source $translations_dir/translations.bash || {
     exit 1
 }
 
-
+if false ; then
 eos_IconGrasp() {
     local app desktop icon
 
@@ -68,12 +68,72 @@ eos_IconGrasp() {
     done
     return 1
 }
+fi
+
+eos_icon_path() {
+    local -r type="$1"
+    local -r name="$2"
+    local -r icondir=/usr/share/icons/Qogir/scalable
+
+    case "$type" in
+        apps|devices|mimetypes|places|status) ;;
+        *) return 1 ;;
+    esac
+    case "$name" in
+        "") return 1 ;;
+    esac
+    local icon=$icondir/$type/$name.svg
+    [ -e $icon ] || return 1
+
+    echo $icon
+}
+
+AssignIconVariables_in_eos_bash_shared() {
+    if [ -x /bin/xdg-mime ] ; then
+        local default_app="$(xdg-mime query default text/html)"
+        case "$default_app" in
+            chromium.desktop)
+                export ICO_INFO_WEB=$(eos_icon_path apps chromium) ;;
+            firefox.desktop)
+                export ICO_INFO_WEB=$(eos_icon_path apps firefox) ;;
+            firefoxdeveloperedition.desktop)
+                export ICO_INFO_WEB=$(eos_icon_path apps firefox-developer-edition) ;;
+            opera.desktop)
+                export ICO_INFO_WEB=$(eos_icon_path apps opera) ;;
+            vivaldi-stable.desktop)
+                export ICO_INFO_WEB=$(eos_icon_path apps vivaldi) ;;
+            *)
+                export ICO_INFO_WEB=$(eos_icon_path apps browser) ;;
+        esac
+    fi
+    export ICO_NEWS=$(eos_icon_path apps newsflash)
+    export ICO_CHANGES=$(eos_icon_path mimetypes text-x-changelog)
+    export ICO_HELP=$(eos_icon_path apps system-help)
+    export ICO_LOG=$(eos_icon_path apps utilities-log-viewer)
+    export ICO_INSTALL=$(eos_icon_path apps system-software-install)
+    export ICO_UPDATE=$(eos_icon_path apps system-software-update)
+    export ICO_SYSTOOLS=$(eos_icon_path apps applications-utilities)
+    export ICO_QUESTION=$(eos_icon_path apps system-help)
+    export ICO_TIPS=$(eos_icon_path apps user-info)
+    export ICO_INFO=$(eos_icon_path apps dialog-information)
+    export ICO_ERROR=$(eos_icon_path apps system-error)
+    export ICO_PREFERENCES_SYSTEM=$(eos_icon_path apps preferences-system)
+    export ICO_NOTIFICATION=$(eos_icon_path apps preferences-system-notifications)
+    export ICO_NOTIFICATION_DISABLE=$(eos_icon_path apps preferences-desktop-notifications)
+    export ICO_SHARE=$(eos_icon_path apps share)
+
+    export ICO_WARNING=/usr/share/icons/Qogir/32/status/dialog-warning.svg
+}
+
+
 
 
 # Icons for various use cases like
 #   --field=...
 #   --image=...
+#   --button=...
 
+if false ; then
 export WELCOME_ICON_SYSTEM_LOGS=search                               # face-worried
 export WELCOME_ICON_LEAVE=stop                                       # face-crying
 export WELCOME_ICON_HONEST=face-angel
@@ -125,6 +185,7 @@ export WELCOME_ICON_CHANGELOG=applications-development
 export WELCOME_ICON_HELP_CONTENTS=help-contents
 export WELCOME_ICON_NOTIFICATIONS=notifications
 export WELCOME_ICON_NOTIFICATIONS_DISABLED=notifications-disabled
+fi
 
 eos_GetArch() {
     local arch; arch="$(/usr/bin/uname -m)"
@@ -324,7 +385,7 @@ eos_yad_check_internet_connection() {
                                 --button=yad-quit:1 \
                                 --button=" Continue anyway!go-next!Don't stop me now":0
                 else
-                    eos_notification "$WELCOME_ICON_WARNING" normal 60000 "$caller" "$title" "No internet connection!"
+                    eos_notification "$ICO_WARNING" normal 60000 "$caller" "$title" "No internet connection!"
                 fi
                 ;;
             *)
@@ -428,7 +489,7 @@ eos_yad_RunCmdTermBash() {
 eos_yad_problem() {
     local title="$1"
     shift
-    eos_yad --text-info --title="$title" --wrap --image=$WELCOME_ICON_ERROR \
+    eos_yad --text-info --title="$title" --wrap --image=$ICO_ERROR \
             --width=700 --height=500 --button=yad-quit:0 "$@"
     # removed --tail
 }
@@ -455,7 +516,7 @@ eos_yad_WARN() {
     local msg="$1"
     local title="Warning"
     shift
-    echo "$msg" | eos_yad_problem "$title" --image=$WELCOME_ICON_WARNING "$@"
+    echo "$msg" | eos_yad_problem "$title" --image=$ICO_WARNING "$@"
 }
 
 # Function detectDE is copied from: https://cgit.freedesktop.org/xdg/xdg-utils/tree/scripts/xdg-utils-common.in
