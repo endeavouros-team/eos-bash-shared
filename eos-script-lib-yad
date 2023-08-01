@@ -41,51 +41,35 @@ source $translations_dir/translations.bash || {
     exit 1
 }
 
-if false ; then
-eos_IconGrasp() {
-    local app desktop icon
-
-    for app in "$@" ; do
-        icon=$(eos-FindAppIcon "$app")
-        #[ -z "$icon" ] && icon=$(yad-tools -i "$app")
-        #[ -z "$icon" ] && icon=$(yad-tools -i "$(eos-FindAppIcon "$app")")
-        if [ -n "$icon" ] ; then
-            echo "$icon"
-            return 0
-        fi
-    done
-
-    return 1
-
-    # old stuff
-    for app in "$@" ; do
-        desktop=$(/usr/bin/find /usr/share/applications -name \*$app\*\.desktop | /usr/bin/head -n1)
-        icon=$(/usr/bin/grep ^Icon= "$desktop" 2>/dev/null | /usr/bin/cut -d '=' -f2 | /usr/bin/head -n1)
-        if [ -n "$icon" ] ; then
-            echo "$icon"
-            return
-        fi
-    done
-    return 1
-}
-fi
-
 eos_icon_path() {
+    # on success, echo full icon path and return 0
+    # on failure, return 1
+
     local -r type="$1"
     local -r name="$2"
-    local -r icondir=/usr/share/icons/Qogir/scalable
+    local icon family
 
     case "$type" in
-        apps|devices|mimetypes|places|status) ;;
+        actions|animations|apps|categories|devices|emblems|emotes|filesystems|intl|mimetypes|places|status|stock) ;;
         *) return 1 ;;
     esac
     case "$name" in
         "") return 1 ;;
     esac
-    local icon=$icondir/$type/$name.svg
-    [ -e $icon ] || return 1
 
-    echo $icon
+    # use Qogir as default, then try other icons
+
+    for family in Qogir "${EOS_ICON_SETS_PREFERENCE[@]}"             # may check Qogir twice...
+    do
+        family=${family##*/}
+        # echo "$FUNCNAME: family = $family" >&2
+        icon="/usr/share/icons/$family/scalable/$type/$name.svg"     # find only scalable icons
+        if [ -e "$icon" ] ; then
+            echo "$icon"
+            return 0
+        fi
+    done
+    return 1
 }
 
 AssignIconVariables_in_eos_bash_shared() {
