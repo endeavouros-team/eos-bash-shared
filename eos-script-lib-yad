@@ -105,6 +105,8 @@ AssignIconVariables_in_eos_bash_shared() {
     export ICO_NOTIFICATION=$(eos_icon_path apps preferences-system-notifications)
     export ICO_NOTIFICATION_DISABLE=$(eos_icon_path apps preferences-desktop-notifications)
     export ICO_SHARE=$(eos_icon_path apps share)
+    export ICO_SAVE=$(eos_icon_path actions document-save)
+    export ICO_MIRROR_RANK=$(eos_icon_path apps preferences-system-performance)
 
     export ICO_WARNING=/usr/share/icons/Qogir/32/status/dialog-warning.svg
 }
