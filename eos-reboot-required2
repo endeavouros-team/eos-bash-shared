@@ -14,14 +14,14 @@ IsRunningKernel() {
 DoNotify() {
     local cmd=(
         eos_notification_all       # function to notify all users
+
         system-reboot              # icon
         critical                   # urgency
         0                          # expire time (not used!)
         eos-reboot-required2       # appname
-        # title:
-        "Reboot recommended!"
-        # message:
-        "Reboot is recommended due to the upgrade of core system package(s)."
+        "Reboot recommended!"      # title:
+        "Reboot is recommended due to the upgrade of core system package(s)."        # message:
+        RED                        # message color
     )
     "${cmd[@]}"
 

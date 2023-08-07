@@ -247,11 +247,26 @@ eos_notification_all() {   # sending notification to all users
     local appname="$4"
     local summary="$5"        # title
     local body="$6"           # msg
-    local body_to_tty="$7"    # action not supported!
+    local color="$7"          # message color (for TTY): RED, YELLOW, or "" (empty or no value means plain text)
 
     [ -n "$urgency" ] || urgency=normal
 
-    [ "$body_to_tty" = "yes" ] && echo "==> INFO: $body" >&2     # meant to print to TTY
+    # [ "$body_to_tty" = "yes" ] && echo "==> INFO: $body" >&2     # meant to print to TTY
+
+    if [ "$XDG_SESSION_TYPE" = "tty" ] || [ -z "$DISPLAY" ] || [ "$TERM" = "linux" ] || [[ $(tty) =~ /dev/tty ]] ; then
+        local -r prefix=$'\e['
+        local -r C_RESET="${prefix}0m"
+        local C_ON=""
+
+        # bold colors
+        case "$color" in
+            YELLOW)  C_ON="${prefix}1;33m" ;;
+            RED)     C_ON="${prefix}1;31m" ;;
+        esac
+
+        printf "%s==> %s%s\n" "$C_ON" "$body" "$C_RESET" >&2
+        return
+    fi
 
     local users=() user userid
     local cmd=()
