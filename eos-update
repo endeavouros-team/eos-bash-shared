@@ -106,7 +106,7 @@ DiskSpace() {
 }
 
 Main() {
-    local progname="$(/usr/bin/basename "$0")"
+    local progname="${0##*/}"
     local helper="pacman"
     local min_free_bytes=$((1000 * 1000 * 1000))  # default: 1 GB
 
@@ -124,7 +124,7 @@ Main() {
     [ $nvidia  = yes ] && subopts+=(--nvidia)
     [ $keyring = yes ] && subopts+=(--keyrings)
 
-    echo2 "$helper update with additional features"
+    echo2 "$progname: package updater with additional features"
 
     DiskSpace
 

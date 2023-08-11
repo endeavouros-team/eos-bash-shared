@@ -45,6 +45,7 @@ SeparateParts() {
     local pkg="$1"
 
     local all=$(echo "$pkg" | sed -E 's/([a-zA-Z0-9@_+][a-zA-Z0-9@._+-]+)-([0-9:]*[^:/\-\ \t]+)-([0-9.]+)-([a-z0-9_]+)\.pkg\.tar\.([a-z0-9]+)$/\1 \2 \3 \4 \5/')
+    #                                    name...........................   epoch..pkgver......   pkgrel.   arch......              compress.
     all=($(echo $all))
 
     local N=${all[0]}
