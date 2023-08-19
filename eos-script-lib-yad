@@ -108,6 +108,11 @@ AssignIconVariables_in_eos_bash_shared() {
     export ICO_SAVE=$(eos_icon_path actions document-save)
     export ICO_MIRROR_RANK=$(eos_icon_path apps preferences-system-performance)
 
+    export ICO_EDIT_CONFIG=$(eos_icon_path apps dconf-editor)
+    export ICO_SCHEDULE=$(eos_icon_path apps preferences-system-time)
+    export ICO_RESET=$(eos_icon_path apps system-restart)
+    export ICO_OPERATION_TEST=$(eos_icon_path apps system-run)
+
     export ICO_WARNING=/usr/share/icons/Qogir/32/status/dialog-warning.svg
 }
 
@@ -702,7 +707,7 @@ eos_yad_nothing_todo() {
 
     [ -n "$timeout" ] || timeout=10
     [ -n "$title" ]   || title="Info"
-    [ -n "$image" ]   || image=info
+    [ -n "$image" ]   || image=$ICO_INFO
 
     local cmd=(
         eos_yad --form --text="$text" --title="$title" --no-focus --image="$image"
