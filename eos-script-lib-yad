@@ -90,6 +90,12 @@ AssignIconVariables_in_eos_bash_shared() {
                 export ICO_INFO_WEB=$(eos_icon_path apps browser) ;;
         esac
     fi
+
+    case "$CurrentDesktop" in
+        # kde) export ICO_CALAMARES=/usr/share/icons/breeze-dark/apps/48/calamares.svg ;;
+        *)     export ICO_CALAMARES=$(eos_icon_path apps calamares) ;;
+    esac
+
     export ICO_NEWS=$(eos_icon_path apps newsflash)
     export ICO_CHANGES=$(eos_icon_path mimetypes text-x-changelog)
     export ICO_HELP=$(eos_icon_path apps system-help)
@@ -112,7 +118,9 @@ AssignIconVariables_in_eos_bash_shared() {
     export ICO_SCHEDULE=$(eos_icon_path apps preferences-system-time)
     export ICO_RESET=$(eos_icon_path apps system-restart)
     export ICO_OPERATION_TEST=$(eos_icon_path apps system-run)
+    export ICO_CONNECTION=$(eos_icon_path apps org.gnome.Connections)
 
+    export ICO_NO_CONNECTION=/usr/share/icons/Qogir/24/panel/nm-no-connection.svg
     export ICO_WARNING=/usr/share/icons/Qogir/32/status/dialog-warning.svg
 }
 
@@ -654,6 +662,12 @@ eos_yad__detectDE()
         # neofetch differs: KDE -> plasma (with DESKTOP_SESSION=openbox-kde and DESKTOP_SESSION=plasma)
         [ -x /usr/bin/neofetch ] && DE="$(neofetch --enable de --de_version off | awk '{print $NF}' | tr '[:upper:]' '[:lower:]')"
     fi
+}
+
+GetCurrentDesktop() {                      # Gives current desktop name in lowercase.
+    local -n _de="$1"                      # Variable from caller, "returns" the desktop name to the caller.
+    local DE="" ; eos_yad__detectDE
+    _de="$DE"
 }
 
 # These 2 funcs return the DE/WM in upper case letters:
