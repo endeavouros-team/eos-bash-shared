@@ -120,6 +120,8 @@ AssignIconVariables_in_eos_bash_shared() {
     export ICO_OPERATION_TEST=$(eos_icon_path apps system-run)
     export ICO_CONNECTION=$(eos_icon_path apps org.gnome.Connections)
 
+    export ICO_BLUETOOTH=$(eos_icon_path devices bluetooth)
+
     export ICO_NO_CONNECTION=/usr/share/icons/Qogir/24/panel/nm-no-connection.svg
     export ICO_WARNING=/usr/share/icons/Qogir/32/status/dialog-warning.svg
 }
