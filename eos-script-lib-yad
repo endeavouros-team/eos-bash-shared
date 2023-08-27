@@ -92,8 +92,8 @@ AssignIconVariables_in_eos_bash_shared() {
     fi
 
     case "$CurrentDesktop" in
-        # kde) export ICO_CALAMARES=/usr/share/icons/breeze-dark/apps/48/calamares.svg ;;
-        *)     export ICO_CALAMARES=$(eos_icon_path apps calamares) ;;
+        kde) export ICO_CALAMARES=/usr/share/icons/breeze-dark/apps/48/calamares.svg ;;
+        *)   export ICO_CALAMARES=$(eos_icon_path apps calamares) ;;
     esac
 
     export ICO_NEWS=$(eos_icon_path apps newsflash)
