@@ -12,19 +12,8 @@ IsRunningKernel() {
 }
 
 DoNotify() {
-    local cmd=(
-        eos_notification_all       # function to notify all users
-
-        system-reboot              # icon
-        critical                   # urgency
-        0                          # expire time (not used!)
-        eos-reboot-required2       # appname
-        "Reboot recommended!"      # title:
-        "Reboot is recommended due to the upgrade of core system package(s)."        # message:
-        RED                        # message color
-    )
-    "${cmd[@]}"
-
+    local REBOOT_SIGNAL_FILE=/tmp/eos-reboot-recommended
+    echo "$targets" > "$REBOOT_SIGNAL_FILE"                # service catches this
     exit 0
 }
 

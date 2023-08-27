@@ -1,0 +1,34 @@
+#!/bin/bash
+
+DoNotify() {
+    local cmd=(
+        eos_notification_all       # function to notify all users
+
+        system-reboot              # icon
+        critical                   # urgency
+        0                          # expire time (not used!)
+        eos-reboot-required2       # appname
+        "Reboot recommended!"      # title:
+        "Reboot is recommended due to the upgrade of core system package(s)."        # message:
+        RED                        # message color
+    )
+    "${cmd[@]}"
+}
+
+Wait-for-some-processes() {
+    # Wait for all pacman-like processes to finish.
+
+    local REBOOT_SIGNAL_FILE=/tmp/eos-reboot-recommended
+
+    if [ -e "$REBOOT_SIGNAL_FILE" ] ; then
+        rm -f "$REBOOT_SIGNAL_FILE"
+        source /usr/share/endeavouros/scripts/eos-script-lib-yad --limit-icons || return
+        # grep's --count option used for ruling out the grep line itself.
+        while [ $(ps -ef | grep -Pwc 'pacman|yay|paru|makepkg') -gt 1 ] ; do
+            sleep 1
+        done
+        DoNotify
+    fi
+}
+
+Wait-for-some-processes "$@"
