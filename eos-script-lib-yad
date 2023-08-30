@@ -538,144 +538,134 @@ eos_yad_WARN() {
 # Function detectDE is copied from: https://cgit.freedesktop.org/xdg/xdg-utils/tree/scripts/xdg-utils-common.in
 
 #--------------------------------------
-# Checks for known desktop environments
-# set variable DE to the desktop environments name, lowercase
+# Checks for known desktop environments.
+# Returning the value, two alternative ways:
+#   a. Set variable named DE to the name of the desktop environment, in lowercase.
+#   b. User given variable (as the first parameter) gets the value.
+#      With this mode user can give option --toupper (as a second parameter) to convert the value to uppercase.
+#      (Also option --tolower is supported.)
 
 eos_yad__detectDE()
 {
+    local variable_from_arg=no               # use variable DE by default
+    local toupper=no                         # do not convert to uppercase by default
+
+    case "$1" in
+        "")
+            local _desktop_=""               # will assign variable named DE if the desktop is found
+            ;;
+        *)                                   # will assign the user given variable name in "$1" with the DE value, if found
+            local -n _desktop_="$1"          # _desktop_ refers to the user given variable
+            variable_from_arg=yes
+            case "$2" in
+                --toupper) toupper=yes ;;
+                --tolower) toupper=no ;;     # tolower is already the default...
+            esac
+            ;;
+    esac
+
     # see https://bugs.freedesktop.org/show_bug.cgi?id=34164
     unset GREP_OPTIONS
 
-    if [ -n "${XDG_CURRENT_DESKTOP}" ]; then
-      case "${XDG_CURRENT_DESKTOP}" in
-         # only recently added to menu-spec, pre-spec X- still in use
-         Budgie*)
-           DE=budgie
-           ;;
-         Cinnamon|X-Cinnamon)
-           DE=cinnamon;
-           ;;
-         DEEPIN|[Dd]eepin)
-           DE=deepin;
-           ;;
-         ENLIGHTENMENT|Enlightenment)
-           DE=enlightenment;
-           ;;
-         # GNOME, GNOME-Classic:GNOME, or GNOME-Flashback:GNOME
-         GNOME*|gnome)
-           DE=gnome;
-           ;;
-         KDE)
-           DE=kde;
-           ;;
-         LXDE)
-           DE=lxde;
-           ;;
-         LXQt)
-           DE=lxqt;
-           ;;
-         MATE)
-           DE=mate;
-           ;;
-         XFCE)
-           DE=xfce
-           ;;
-         X-Generic)
-           DE=generic
-           ;;
-         i3)
-           DE=i3
-           ;;
-      esac
+    case "${XDG_CURRENT_DESKTOP}" in
+        # only recently added to menu-spec, pre-spec X- still in use
+        Budgie*)                      _desktop_=budgie ;;
+        Cinnamon|X-Cinnamon)          _desktop_=cinnamon ;;
+        DEEPIN|[Dd]eepin)             _desktop_=deepin ;;
+        ENLIGHTENMENT|Enlightenment)  _desktop_=enlightenment ;;
+        GNOME*|gnome)                 _desktop_=gnome ;;        # GNOME, GNOME-Classic:GNOME, or GNOME-Flashback:GNOME
+        KDE)                          _desktop_=kde ;;
+        LXDE)                         _desktop_=lxde ;;
+        LXQt)                         _desktop_=lxqt ;;
+        MATE)                         _desktop_=mate ;;
+        XFCE)                         _desktop_=xfce ;;
+        X-Generic)                    _desktop_=generic ;;      # ???
+        i3)                           _desktop_=i3 ;;
+    esac
+
+    if [ -z "$_desktop_" ]; then      # fallback to checking $DESKTOP_SESSION
+        case "$DESKTOP_SESSION" in
+            gnome)                     _desktop_=gnome ;;
+            LXDE|Lubuntu)              _desktop_=lxde ;;
+            MATE)                      _desktop_=mate ;;
+            plasma)                    _desktop_=kde ;;
+            xfce|xfce4|'Xfce Session') _desktop_=xfce ;;
+            openbox)                   _desktop_=openbox ;;
+        esac
     fi
 
-    if [ "$DE" = "" ]; then
+    if [ "$_desktop_" = "" ]; then
       # classic fallbacks
-      if [ x"$KDE_FULL_SESSION" != x"" ]; then DE=kde;
-      elif [ x"$GNOME_DESKTOP_SESSION_ID" != x"" ]; then DE=gnome;
-      elif [ x"$MATE_DESKTOP_SESSION_ID" != x"" ]; then DE=mate;
-      elif dbus-send --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.GetNameOwner string:org.gnome.SessionManager &>/dev/null ; then DE=gnome;
-      elif xprop -root _DT_SAVE_MODE 2> /dev/null | grep ' = \"xfce4\"$' >/dev/null 2>&1; then DE=xfce;
-      elif xprop -root 2> /dev/null | grep -i '^xfce_desktop_window' >/dev/null 2>&1; then DE=xfce
-      elif echo "$DESKTOP" | grep -q '^Enlightenment'; then DE=enlightenment;
-      elif [ x"$LXQT_SESSION_CONFIG" != x"" ]; then DE=lxqt;
+      if [ x"$KDE_FULL_SESSION" != x"" ]; then _desktop_=kde;
+      elif [ x"$GNOME_DESKTOP_SESSION_ID" != x"" ]; then _desktop_=gnome;
+      elif [ x"$MATE_DESKTOP_SESSION_ID" != x"" ]; then _desktop_=mate;
+      elif dbus-send --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.GetNameOwner string:org.gnome.SessionManager &>/dev/null ; then _desktop_=gnome;
+      elif xprop -root _DT_SAVE_MODE 2> /dev/null | grep ' = \"xfce4\"$' >/dev/null 2>&1; then _desktop_=xfce;
+      elif xprop -root 2> /dev/null | grep -i '^xfce_desktop_window' >/dev/null 2>&1; then _desktop_=xfce
+      elif echo "$DESKTOP" | grep -q '^Enlightenment'; then _desktop_=enlightenment;
+      elif [ x"$LXQT_SESSION_CONFIG" != x"" ]; then _desktop_=lxqt;
+
+      elif [ -x /usr/bin/qtile ] && [ -d /usr/share/doc/qtile ] ; then
+          _desktop_="qtile"
+      elif eos_IsSway ; then
+          _desktop_=sway
+      elif eos_IsBspwm ; then
+          _desktop_=bspwm
       fi
     fi
 
-    if [ "$DE" = "" ]; then
-      # fallback to checking $DESKTOP_SESSION
-      case "$DESKTOP_SESSION" in
-         gnome)
-           DE=gnome;
-           ;;
-         LXDE|Lubuntu)
-           DE=lxde; 
-           ;;
-         MATE)
-           DE=mate;
-           ;;
-         xfce|xfce4|'Xfce Session')
-           DE=xfce;
-           ;;
-         openbox)
-             DE=openbox
-             ;;
-      esac
-    fi
-
-    if [ "$DE" = "" ]; then
+    if [ "$_desktop_" = "" ]; then
       # fallback to uname output for other platforms
       case "$(uname 2>/dev/null)" in 
-        CYGWIN*)
-          DE=cygwin;
-          ;;
-        Darwin)
-          DE=darwin;
-          ;;
+        CYGWIN*)  _desktop_=cygwin ;;
+        Darwin)   _desktop_=darwin ;;
       esac
     fi
 
-    if [ "$DE" = "gnome" ]; then
+    # if [ "$_desktop_" = "gnome" ]; then
         # gnome-default-applications-properties is only available in GNOME 2.x
         # but not in GNOME 3.x
-        :
-        # which gnome-default-applications-properties > /dev/null 2>&1  || DE="gnome3"        # This is no more needed (?)
-    fi
+        # which gnome-default-applications-properties > /dev/null 2>&1  || _desktop_="gnome3"        # This is no more needed (?)
+    # fi
 
-    if [ -f "$XDG_RUNTIME_DIR/flatpak-info" ]; then
-      DE="flatpak"
-    fi
-
-    if [ -z "$DE" ] ; then
-        if [ -x /usr/bin/qtile ] && [ -d /usr/share/doc/qtile ] ; then
-            DE="qtile"
-        fi
-    fi
-    if [ -z "$DE" ] ; then
-        if eos_IsSway ; then
-            DE=sway
-        elif eos_IsBspwm ; then
-            DE=bspwm
+    if [ -z "$_desktop_" ]; then                                                                   # ??
+        if [ -f "$XDG_RUNTIME_DIR/flatpak-info" ]; then
+            _desktop_="flatpak"
         fi
     fi
 
-    if [ -z "$DE" ] ; then
+    if [ -z "$_desktop_" ] ; then
         # neofetch fails: Enlightenment, openbox
         # neofetch differs: KDE -> plasma (with DESKTOP_SESSION=openbox-kde and DESKTOP_SESSION=plasma)
-        [ -x /usr/bin/neofetch ] && DE="$(neofetch --enable de --de_version off | awk '{print $NF}' | tr '[:upper:]' '[:lower:]')"
+        if [ -x /usr/bin/neofetch ] ; then
+            # _desktop_="$(neofetch --enable de --de_version off | awk '{print $NF}' | tr '[:upper:]' '[:lower:]')"
+            _desktop_=$(neofetch --enable de --de_version off)    # example: de: Plasma
+            _desktop_=${_desktop_#* }                                    # drop all before first space
+            _desktop_=${_desktop_% *}                                    # drop all before last space
+            _desktop_=${_desktop_,,}                                     # make all lowercase
+            case "$_desktop_" in
+                plasma) _desktop_=kde ;;
+            esac
+        fi
     fi
+
+    [ $toupper = yes ] && _desktop_=${_desktop_^^}
+
+    case "$variable_from_arg" in
+        no) [ -n "$_desktop_" ] && DE="$_desktop_" ;;
+    esac
 }
 
 GetCurrentDesktop() {                      # Gives current desktop name in lowercase.
     local -n _de="$1"                      # Variable from caller, "returns" the desktop name to the caller.
-    local DE="" ; eos_yad__detectDE
-    _de="$DE"
+    eos_yad__detectDE _de --tolower
 }
 
-# These 2 funcs return the DE/WM in upper case letters:
-eos_yad_GetDesktopName() {      # return DE name in uppercase letters
-    eos_yad__detectDE
-    echo "$DE" | tr '[:lower:]' '[:upper:]'
+# These 2 easy funcs display the DE/WM in upper case letters:
+eos_yad_GetDesktopName() {
+    local _de=""
+    eos_yad__detectDE _de --toupper
+    echo "$_de"
 }
 eos_GetDeOrWm() { eos_yad_GetDesktopName ; }
 
@@ -886,21 +876,28 @@ eos_running_kernel() {
     local pkgbase="/usr/lib/modules/$(uname --kernel-release)/pkgbase"
 
     if [ -r "$pkgbase" ] ; then
-        running_kernel="$(cat "$pkgbase")"
+        # running_kernel="$(cat "$pkgbase")"
+        running_kernel="$(< "$pkgbase")"
         case "$running_kernel" in
             linux*) echo "$running_kernel" ; return ;;
         esac
     fi
 
     if [ -r /proc/version ] ; then
-        running_kernel="$(cat /proc/version | sed 's|.*(\([^@]*\)@archlinux).*|\1|')"
+        # running_kernel="$(cat /proc/version | sed 's|.*(\([^@]*\)@archlinux).*|\1|')"
+        running_kernel=$(</proc/version)         # example line:  ...(linux@archlinux)...
+        running_kernel=${running_kernel%%@*}     # drop all after "@", including
+        running_kernel=${running_kernel##*\(}    # drop all before "(", including
         case "$running_kernel" in
             linux*) echo "$running_kernel" ; return ;;
         esac
     fi
 
     if [ -r /proc/cmdline ] ; then
-        running_kernel=$(cat /proc/cmdline | awk '{print $1}' | sed 's|^.*/vmlinuz-\(.*\)$|\1|')   # works only with grub
+        # running_kernel=$(cat /proc/cmdline | awk '{print $1}' | sed 's|^.*/vmlinuz-\(.*\)$|\1|')   # works only with grub
+        running_kernel=$(</proc/cmdline)                      # example line: BOOT_IMAGE=/boot/vmlinuz-linux root=UUID=...
+        running_kernel=${running_kernel##*/vmlinuz-}          # drop all before "linux"
+        running_kernel=${running_kernel%% *}                  # drop all after " "
         case "$running_kernel" in
             linux*) echo "$running_kernel" ; return ;;
         esac

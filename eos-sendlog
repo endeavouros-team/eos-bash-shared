@@ -187,7 +187,7 @@ Main_old() {
 
     if [ "$save" = "yes" ] ; then
         local current_db=""
-        [ -r "$db" ] && current_db="$(cat "$db")"
+        [ -r "$db" ] && current_db="$(< "$db")"
         printf "%s: %s\n" "$(date +%Y%m%d-%H%M)" "$url"  > $db
         [ -n "$current_db" ] && echo "$current_db"      >> $db
     fi

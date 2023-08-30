@@ -48,7 +48,7 @@ Main() {
 
         result=$?
         if [ -r "$subresultfile" ] ; then
-            subresult="$(cat "$subresultfile")"
+            subresult="$(< "$subresultfile")"
             rm -f "$subresultfile"
         fi
 
