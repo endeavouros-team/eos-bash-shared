@@ -16,8 +16,8 @@ eos-pkg-changelog | (Unavailable) Show the changelog of (most) EndeavourOS packa
 eos-pkginfo | (Unavailable) Show usage and/or developer information about an EndeavourOS/Arch/AUR package.<br>Package can be identified by its name, included program, or file path.<br>Usage: `eos-pkginfo {<package-name> \| <program-name> \| <file path>`}
 eos-pkginfo.completion | (Unavailable) Bash completion for eos-pkginfo.<br>Note: does not support completion for AUR packages because of performance.
 eos-reboot-required.hook | Runs `eos-reboot-required2` after any of the listed essential system packages have been updated.
-eos-reboot-required2 | Filters packages that may need a notificication about a recommended reboot and signals eos-reboot-required3 by using the systemd service.
-eos-reboot-required3 | Waits for all pacman-like processes to finish, then notifies about needed reboot when called by eos-reboot-required.service.
+eos-reboot-required2 | Filters packages that may need a notificication about a recommended reboot and signals eos-reboot-required3 with the help of the systemd service.
+eos-reboot-required3 | When called by eos-reboot-required.service, waits for all pacman-like processes to finish, then notifies about needed reboot.
 eos-reboot-required.service | Calls eos-reboot-required3 when a reboot is recommended.
 eos-reboot-required.timer | Calls eos-reboot-required.service periodically.
 eos-script-lib-yad | Common bash code for various EOS apps.
