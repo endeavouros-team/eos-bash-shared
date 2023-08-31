@@ -24,7 +24,7 @@ Wait-for-some-processes() {
         rm -f "$REBOOT_SIGNAL_FILE"
         source /usr/share/endeavouros/scripts/eos-script-lib-yad --limit-icons || return
         # grep's --count option used for ruling out the grep line itself.
-        while [ $(ps -ef | grep -Pwc 'pacman|yay|paru|makepkg') -gt 1 ] ; do
+        while ps -C pacman,yay,paru,makepkg >/dev/null ; do
             sleep 1
         done
         DoNotify
