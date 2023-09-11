@@ -1,15 +1,15 @@
 #!/bin/bash
 
 Main() {
-    if (eos-connection-checker) ; then
-        local country=$(show-location-info country | tr '[:upper:]' '[:lower:]')
-        case "$country" in
-            de|fi|se)
-                echo "Setting keyboard layout to: $country" > /tmp/eos-kbd-set.log
-                setxkbmap $country
-                ;;
-        esac
-    fi
+    local country=$(show-location-info country)
+    country=${country,,}   # to lowercase
+    case "$country" in
+        'de'|'fi'|'se')
+            setxkbmap $country
+            # local progname=${0##*/}
+            # echo "Setting keyboard layout to: $country" > /tmp/$progname.log
+            ;;
+    esac
 }
 
 Main "$@"
