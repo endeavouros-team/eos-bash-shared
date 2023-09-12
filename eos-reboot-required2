@@ -12,9 +12,7 @@ IsRunningKernel() {
 }
 
 DoNotify() {
-    local REBOOT_SIGNAL_FILE=/tmp/eos-reboot-recommended
-    echo "$targets" > "$REBOOT_SIGNAL_FILE"                # service catches this
-    exit 0
+    systemctl enable --now eos-reboot-required.timer
 }
 
 Main() {
