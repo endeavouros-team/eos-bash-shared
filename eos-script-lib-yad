@@ -283,12 +283,11 @@ eos_notification_all() {   # sending notification to all users
         return
     fi
 
-    local users=() user userid
+    local users="$(eos_GetUsers)"
+    local user userid
     local cmd=()
 
-    readarray -t users <<< $(eos_GetUsers)
-
-    for user in "${users[@]}" ; do
+    for user in $users ; do
         userid=$(/usr/bin/id -u "$user")
         cmd=(
             DISPLAY=:0
