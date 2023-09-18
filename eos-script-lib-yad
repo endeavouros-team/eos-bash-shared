@@ -902,3 +902,20 @@ eos_running_kernel() {
         esac
     fi
 }
+
+_bg_or_bashdb() {
+    # If the "main" function of a script should run in background *and*
+    # sometimes the script needs to be debugged with bashdb,
+    # the script can use this function to start running.
+    # Assumption: the script has a single "main" function that starts the execution.
+    # For example:
+    #    _bg_or_bashdb  <main-function-of-a-script>  "$@"
+    # See also: the 'akm' app.
+
+    case "$_Dbg_debugger_name" in
+        bashdb) "$@"   ;;         # when debugging with bashdb, do not run in background
+        *)      "$@" & ;;         # otherwise run in background
+    esac
+}
+# if [ "${BASH_SOURCE[*]}" != "${BASH_SOURCE[*]//\/bashdb/}" ] ; then
+# fi
