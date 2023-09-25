@@ -13,6 +13,7 @@ IsRunningKernel() {
 
 DoNotify() {
     systemctl enable --now eos-reboot-required.timer
+    exit 0
 }
 
 Main() {
