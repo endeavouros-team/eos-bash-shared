@@ -12,6 +12,7 @@ IsRunningKernel() {
 }
 
 DoNotify() {
+    echo "$target" > /var/log/eos-reboot-required-trigger.log
     systemctl enable --now eos-reboot-required.timer
     exit 0
 }
