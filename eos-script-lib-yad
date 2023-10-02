@@ -480,11 +480,11 @@ eos_yad_RunCmdTermBashOpt() {  # like eos_yad_RunCmdTermBash, but supports certa
     # but waits until the commands from $tmpfile are executed.
     case "$term" in
         /usr/bin/gnome-terminal | gnome-terminal)
-            $term $termopts --wait -- "$tmpfile" ;;
+            $term $termopts --wait -- "$tmpfile" 2>/dev/null ;;
         /usr/bin/xfce4-terminal | xfce4-terminal)
-            $term --disable-server $termopts -e "$tmpfile" ;;
+            $term --disable-server $termopts -e "$tmpfile" 2>/dev/null ;;
         *)
-            $term $termopts -e "$tmpfile" ;;
+            $term $termopts -e "$tmpfile" 2>/dev/null ;;
     esac
 
     # The following DOES NOT WORK with plain gnome-terminal:
