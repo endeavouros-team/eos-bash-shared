@@ -73,8 +73,10 @@ eos_icon_path() {
 }
 
 AssignIconVariables_in_eos_bash_shared() {
-    if [ -x /bin/xdg-mime ] ; then
-        local default_app="$(xdg-mime query default text/html)"
+    export ICO_INFO_WEB=$(eos_icon_path apps internet-web-browser)
+
+    if false && [ -x /bin/xdg-mime ] ; then
+        local default_app="$(xdg-mime query default text/html)"        # 'xdg-mime query default' may issue a warning on KDE if run with elevated privileges
         case "$default_app" in
             chromium.desktop)
                 export ICO_INFO_WEB=$(eos_icon_path apps chromium) ;;
