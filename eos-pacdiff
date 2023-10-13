@@ -3,7 +3,7 @@
 # Pacdiff for EndeavourOS.
 
 IsInstalled() { pacman -Qq "$1" >& /dev/null ; }
-HasLibs() { IsInstalled webkit2gtk ; }
+HasLibs() { IsInstalled webkit2gtk-4.1 ; }
 
 SafetyWarning() {
     if [ "$EOS_PACDIFF_WARNING" = "yes" ] ; then
