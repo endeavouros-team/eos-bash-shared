@@ -198,6 +198,23 @@ eos_GetArch() {
     printf "%s" "$arch"
 }
 
+EosSudoEditor() {
+    local editor ed1
+
+    for editor in "${EOS_SUDO_EDITORS[@]}" rnano nano vim "emacs -nw" "$SUDO_EDITOR" "$VISUAL" "$EDITOR" ; do
+        ed1="${editor%% *}"
+        if /usr/bin/which "$ed1" >& /dev/null ; then
+            case "$ed1" in
+                mousepad | /bin/mousepad | /usr/bin/mousepad) editor="/usr/bin/dbus-launch $editor" ;;
+            esac
+            echo "$editor"
+            return 0
+        fi
+    done
+    return 1
+    # DIE "suitable editor not found"
+}
+
 eos_GetProgName() { /usr/bin/basename "$0" ; }
 
 eos_select_browser() {
