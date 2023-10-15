@@ -9,17 +9,17 @@
 #
 
 source /usr/share/endeavouros/scripts/eos-script-lib-yad || exit 1
-
 export -f eos_yad
+AssignIconVariables_in_eos_bash_shared
 
 DIE() {
     local msg="$1"
     shift
     if false ; then
-        echo "Error: $msg" | eos_yad --text-info --image=error --title="$progname error" \
+        echo "Error: $msg" | eos_yad --text-info --image=$ICO_ERROR --title="$progname error" \
                                      --wrap --width=500 --height=300 --button=yad-quit:1 "$@"
     else
-        eos_yad --form --image=error --title="$progname error" --text="Error: $msg" --button=yad-quit:1 --scroll "$@"
+        eos_yad --form --image=$ICO_ERROR --title="$progname error" --text="Error: $msg" --button=yad-quit:1 --scroll "$@"
     fi
     exit 1
 }
@@ -73,10 +73,14 @@ EOF
 }
 
 AddCommand() {
+    local show=yes
+    case "$1" in
+        --silent) show=no; shift ;;
+    esac
     local command="$1"
 
     cmds+=" ; $command"
-    if [ "$verbose" = "yes" ] ; then
+    if [ "$verbose" = "yes" ] && [ "$show" = "yes" ] ; then
         echo "$command" >> $vfile
     fi
 }
@@ -97,7 +101,7 @@ _paccache_cleaner_manager()
     local xx
     local period_vals=""
     local txt
-    local image=drive-harddisk # disk-utility
+    local image=$ICO_DISK    # drive-harddisk    # disk-utility
     local result=""
     local field_nr=1
     local indent="<tt>  </tt>"
@@ -148,9 +152,9 @@ _paccache_cleaner_manager()
             eos_yad --form --width=500 --image=$image
             --title='Pacman cache cleaner service manager' 
             --text="$txt" 
-            --field='Cleaning period':CB                                   "$period_vals" 
-            --field='Number of package versions to keep':NUM               "$current_keepcount"
-            --field='Remove uninstalled but still cached packages now':CHK "$current_delete_uninstalled"
+            --field='Cleaning period!How often the package cache will be cleaned':CB                                   "$period_vals" 
+            --field='Number of the latest package versions to keep!Keep only the selected number of each package':NUM  "$current_keepcount"
+            --field='Remove uninstalled but still cached packages now!One time operation':CHK                          "$current_delete_uninstalled"
         )
 
         result="$("${cmd_yad[@]}" 2>/dev/null)"
@@ -204,14 +208,23 @@ _paccache_cleaner_manager()
     # Execute the command list.
 
     if [ "$cmds" != ":" ] ; then
+        AddCommand --silent "echo Service reloaded."
         if [ "$verbose" = "yes" ] ; then
-            pkexec bash -c "cat '$vfile' ; $cmds"
+            # pkexec bash -c "cat '$vfile' ; $cmds"
+            RunInTerminal "cat \"$vfile\"; $EOS_ROOTER \"$cmds\""
             rm -f "$vfile"
         else
-            pkexec bash -c "$cmds"
+            # pkexec bash -c "$cmds"
+            if [ "$verbose" = "yes" ] ; then
+                RunInTerminal "cat \"$vfile\"; $EOS_ROOTER \"$cmds\""
+            else
+                RunInTerminal "echo \"Running selected commands.\"; $EOS_ROOTER \"$cmds\""
+            fi
         fi
     else
-        echo "No change to settings."
+        # echo "No change to settings."
+        local msg="Nothing to do (settings not changed)"
+        eos_yad --form --image=$ICO_INFO --title="$progname" --text="$msg" --button=yad-quit:1 --scroll
     fi
 }
 
