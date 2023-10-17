@@ -7,9 +7,17 @@ echo2()   { echo "$@" >&2 ; }
 printf2() { printf "$@" >&2 ; }
 WARN()    { echo2 "==> $progname: warning: $1" ; }
 
+SetHelper() {
+    for helper in "$@" "$EOS_AUR_HELPER" "$EOS_AUR_HELPER_OTHER" yay paru pacman ; do
+        which "${helper%% *}" &>/dev/null && return 0
+    done
+    WARN "AUR helper not found"
+    helper=pacman
+}
+
 Options() {
     local opts
-    local lopts="dump-options,nvidia,no-keyring,helper:,min-free-bytes:,paru,yay,pacman,help"
+    local lopts="aur,dump-options,nvidia,no-keyring,helper:,min-free-bytes:,paru,yay,pacman,help"
     local sopts="h"
 
     opts="$(/usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
@@ -29,8 +37,9 @@ Options() {
                 ;;
             --no-keyring) keyring=no ;;
             --min-free-bytes) min_free_bytes="$2" ; shift ;;
-            --helper) helper="$2" ; shift ;;
-            --paru | --yay | --pacman) helper="${1/--/}" ;;
+            --helper) SetHelper "$2" ; shift ;;
+            --aur) SetHelper ;;
+            --paru | --yay | --pacman) SetHelper "${1/--/}" ;;
             --dump-options)
                 lopts="${lopts//:/}"
                 lopts="--${lopts//,/ --}"
@@ -107,6 +116,7 @@ DiskSpace() {
 
 Main() {
     local progname="${0##*/}"
+    source /usr/share/endeavouros/scripts/eos-script-lib-yad || return 1
     local helper="pacman"
     local min_free_bytes=$((1000 * 1000 * 1000))  # default: 1 GB
 
