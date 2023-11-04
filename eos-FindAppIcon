@@ -6,7 +6,7 @@
 #    local path
 #
 #    for sz in "48" "48x48"  ; do
-#        path="$(/usr/bin/find /usr/share/icons -name "$app".\* | /usr/bin/grep /${sz}/ | /usr/bin/head -n 1)"
+#        path="$(/usr/bin/find /usr/share/icons -name "$app".\* | /usr/bin/grep -m1 /${sz}/)"
 #        test -n "$path" && {
 #            echo "$path"
 #            return
@@ -22,7 +22,7 @@ FindDesktopIcon() {
     local dir=/usr/share/applications
 
     if [ -r $dir/"$app".desktop ] ; then
-        path="$(grep "^Icon=" $dir/"$app".desktop | head -n 1 | cut -d '=' -f 2)"
+        path="$(grep -m1 "^Icon=" $dir/"$app".desktop | cut -d '=' -f 2)"
         if [ -n "$path" ] ; then
             echo "$path"
             return 0
@@ -49,7 +49,7 @@ FindAppIcon() {
 
     for set in "${icon_sets[@]}" ; do
         paths="$(find "/usr/share/icons/$set" -name "$app".\*)"
-        path="$(echo "$paths" | grep "/scalable/" | head -n1)"
+        path="$(echo "$paths" | grep -m1 "/scalable/")"
         [ -z "$path" ] && path="$(echo "$paths" | sort -r | head -n1)"
         [ -z "$path" ] && path=$(yad-tools -i "$app" 2>/dev/null)
         if [ -n "$path" ] ; then

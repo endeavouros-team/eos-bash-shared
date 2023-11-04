@@ -39,22 +39,16 @@ Main() {
     # Quick check is Nvidia modules are in use.
     lsmod | grep nvidia >/dev/null || Exit 0
 
-    # Some NVIDIA module(s) are in use. Check installed packages.
-
-    local -r inst=$(pacman -Qsq | grep -P '^nvidia|^linux$|^linux-lts$')
-
     # If any of these nvidia dkms versions are installed, we have nothing to do.
-    [ -n "$(echo "$inst" | grep ^nvidia-dkms$)" ]       && Exit 0
-    [ -n "$(echo "$inst" | grep ^nvidia-470xx-dkms$)" ] && Exit 0
-    [ -n "$(echo "$inst" | grep ^nvidia-390xx-dkms$)" ] && Exit 0
+    expac -Q %n nvidia-dkms nvidia-470xx-dkms nvidia-390xx-dkms >/dev/null && Exit 0
 
     while true ; do
         # Check if "nvidia & linux" or "nvidia-lts & linux-lts" are installed.
-        if [ -n "$(echo "$inst" | grep ^nvidia$)" ] && [ -n "$(echo "$inst" | grep ^linux$)" ] ; then
+        if [ "$(expac -Q -d'|' %n linux nvidia)" = "linux|nvidia|" ] ; then
             need_check=yes
             break
         fi
-        if [ -n "$(echo "$inst" | grep ^nvidia-lts$)" ] && [ -n "$(echo "$inst" | grep ^linux-lts$)" ] ; then
+        if [ "$(expac -Q -d'|' %n linux-lts nvidia-lts)" = "linux-lts|nvidia-lts|" ] ; then
             need_check=yes
             break
         fi

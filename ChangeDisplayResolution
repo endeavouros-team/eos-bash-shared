@@ -34,7 +34,7 @@ yad_ChangeDisplayResolution() {
         DIE "this implementation needs package 'xorg-xrandr'."
     fi
     local query="$(xrandr --query)"
-    local output="$(echo "$query" | grep " connected " | head -n 1 | awk '{print $1}')"
+    local output="$(echo "$query" | grep -m1 " connected " | awk '{print $1}')"
     local xrandr="xrandr --output $output --mode"
     local resos="$(echo "$query" | grep "^ [ ]*[0-9][0-9]*x[0-9][0-9]* " | awk '{print $1}')"
     local resosarr

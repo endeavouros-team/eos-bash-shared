@@ -43,7 +43,7 @@ PCI_info() {
 }
 CPU_info() {
     # lscpu | grep "^Vendor ID:" | awk '{print $3}'
-    grep -w "^vendor_id" /proc/cpuinfo | head -n 1 | awk '{print $3}'
+    grep -m1 -w "^vendor_id" /proc/cpuinfo | awk '{print $3}'
 }
 
 InVirtualBox() {
