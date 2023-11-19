@@ -5,7 +5,8 @@
 
 echo2()   { echo "$@" >&2 ; }
 printf2() { printf "$@" >&2 ; }
-WARN()    { echo2 "==> $progname: warning: $1" ; }
+WARN()    { echo2 "==> $progname: warning: $1"; }
+DIE()     { echo2 "==> $progname: error: $1"; exit 1;  }
 
 SetHelper() {
     for helper in "$@" "$EOS_AUR_HELPER" "$EOS_AUR_HELPER_OTHER" yay paru pacman ; do
@@ -15,9 +16,24 @@ SetHelper() {
     helper=pacman
 }
 
+Cmd() {                           # Show a command, run it, and exit on issues.
+    echo2 "==>" "$@"
+    "$@" || DIE "'$*' failed."
+}
+
+ResetKeyrings() {
+    Cmd sudo mv /etc/pacman.d/gnupg /root/pacman-key.bak.$(date +%Y%m%d-%H%M).by.$progname
+    Cmd sudo pacman-key --init
+    Cmd sudo pacman-key --populate archlinux endeavouros
+    Cmd sudo pacman -Syy --noconfirm archlinux-keyring endeavouros-keyring
+    Cmd sudo pacman -Syu
+    echo2 "Keyrings reset."
+    exit 0
+}
+
 Options() {
     local opts
-    local lopts="aur,dump-options,nvidia,no-keyring,helper:,min-free-bytes:,paru,yay,pacman,help"
+    local lopts="aur,dump-options,keyrings-reset,nvidia,no-keyring,helper:,min-free-bytes:,paru,yay,pacman,help"
     local sopts="h"
 
     opts="$(/usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
@@ -29,13 +45,10 @@ Options() {
     while true ; do
         case "$1" in
             --nvidia)
-                if IsEndeavourOS ; then
-                    nvidia=yes
-                else
-                    WARN "sorry, option $1 works only in EndeavourOS. Option ignored."
-                fi
+                IsEndeavourOS && nvidia=yes || WARN "sorry, option $1 works only in EndeavourOS. Option ignored."
                 ;;
             --no-keyring) keyring=no ;;
+            --keyrings-reset) ResetKeyrings ;;
             --min-free-bytes) min_free_bytes="$2" ; shift ;;
             --helper) SetHelper "$2" ; shift ;;
             --aur) SetHelper ;;
@@ -66,6 +79,8 @@ Options:
   --help, -h         This help.
   --nvidia           Check also nvidia driver vs. kernel updates.
   --no-keyring       Do not try to update keyrings first.
+  --keyrings-reset   Resets Arch and EndeavourOS keyrings.
+                     Try this if keyring issues constantly make system update fail.
   --helper           AUR helper name. Supported: yay, paru, pacman.
                      Default: pacman.
                      Other AUR helpers supporting option -Sua like yay should work as well.
