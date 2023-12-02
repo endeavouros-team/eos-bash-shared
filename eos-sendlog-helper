@@ -194,14 +194,14 @@ Main_old() {
     echo "$url"
 }
 
-Main() {
+Main_old2() {
     local progname="${0##*/}"
     local logfile="$HOME/$progname.log"
 
     # pastebin providers
-    _0x0.st() { curl -F'file=@-' https://0x0.st ; }
-    _ix.io()  { curl -F'f:1=<-'  ix.io | tee -a "$logfile" ; }      # no https at 2023-06-20
-    _wgetpaste() {
+#    _0x0.st() { curl -F'file=@-' https://0x0.st ; }
+#    _ix.io()  { curl -F'f:1=<-'  ix.io | tee -a "$logfile" ; }      # no https at 2023-06-20
+    _wgetpaste_foo() {
 	if [ ! -x /bin/wgetpaste ] ; then
 	    echo "$progname: warning: wgetpaste-eos not installed" >&2
 	    return 1
@@ -225,9 +225,46 @@ Main() {
 	return 1
     fi
     # echo "$input" | _0x0.st 2>/dev/null && return             # fails at 2023-06-20
-    _wgetpaste 2>/dev/null && return
+    # _wgetpaste 2>/dev/null && return
     echo "$input" | _ix.io 2>/dev/null && return
     echo "$progname: warning: configured pastebin sites failed." >&2
+}
+
+#################################### 
+
+
+_0x0.st()    { $curl -F'file=@-' https://0x0.st ; }
+_ix.io()     { $curl -F'f:1=<-'  http://ix.io ; }
+_wgetpaste() { wgetpaste -n anonymous ; }
+
+Tee() {
+    local srv="$1"
+    echo "$input" | "$srv" > $log
+    return $?
+}
+
+Main() {
+    local -r log=/tmp/tmpfile.log
+    local -r curl="/bin/curl --fail -Lsm 10"
+    local -r input=$(cat)
+
+    [ "$input" ] || {
+        echo "No input!"
+        return 1
+    }
+
+    local services=(
+        _0x0.st
+        _ix.io
+        _wgetpaste
+    )
+
+    for srv in "${services[@]}" ; do
+        if Tee "$srv" ; then
+            cat $log
+            return 0
+        fi
+    done
 }
 
 Main "$@"
