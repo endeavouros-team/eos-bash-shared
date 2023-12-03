@@ -247,6 +247,7 @@ Main() {
     local -r log=/tmp/tmpfile.log
     local -r curl="/bin/curl --fail -Lsm 10"
     local -r input=$(cat)
+    local count=0
 
     [ "$input" ] || {
         echo "No input!"
@@ -264,7 +265,10 @@ Main() {
             cat $log
             return 0
         fi
+        ((count++))
+        [ $count -lt ${#services[@]} ] && echo2 "==> Info: ${srv#_} failed, trying ${services[$count]#_} ..."
     done
+    DIE "all pastebin services failed!"
 }
 
 Main "$@"
