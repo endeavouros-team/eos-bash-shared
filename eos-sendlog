@@ -5,12 +5,15 @@
 #
 # Tip: multiple commands (including parameters) can be given too:
 #    eos-sendlog bash -c "command1 ; command2 ; command3"
+#
+# Tip2: user can select the pastebin provider (see 'eos-sendlog-helper -h'):
+#    echo foobar | eos-sendlog --termbin
 
 Main() {
     if [ "$1" ] ; then
         LANG=C "$@" | eos-sendlog-helper
     else
-        eos-sendlog-helper
+        eos-sendlog-helper "$@"    # $@ = options for eos-sendlog-helper
     fi
 }
 
