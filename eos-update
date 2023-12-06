@@ -181,7 +181,7 @@ Main() {
         sudo eos-update-extras "${subopts[@]}"
         sudo pacman -Su
 
-		# If AUR helper set, update AUR packages
+	# If AUR helper set, update AUR packages
         if [ "$helper" != "pacman" ]; then
             echo3 "Updating AUR packages"
             $helper -Sua
