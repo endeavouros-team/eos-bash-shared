@@ -33,7 +33,7 @@ ResetKeyrings() {
 
 Options() {
     local opts
-    local lopts="aur,dump-options,flatpak,keyrings-reset,nvidia,no-keyring,helper:,min-free-bytes:,paru,yay,pacman,help"
+    local lopts="aur,dump-options,keyrings-reset,nvidia,no-keyring,helper:,min-free-bytes:,paru,yay,pacman,help" # flatpak
     local sopts="h"
 
     opts="$(/usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
@@ -90,12 +90,12 @@ Options:
   --yay              Same as --helper=yay.
   --aur              Uses the AUR helper configured in /etc/eos-script-lib-yad.conf.
   --pacman           Same as --helper=pacman. Default. (Note: pacman does not support AUR directly).
-  --flatpak          Additionally updates flatpaks.
   --min-free-bytes   Minimal amount of free space (in bytes) that the root partition should have
                      before updating. Otherwise a warning message will be displayed.
                      Default: $min_free_bytes
   --dump-options     Shows all supported options. Used for bash command completion.
 EOF
+#  --flatpak          Additionally updates flatpaks.
                 exit 0
                 ;;
             
