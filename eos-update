@@ -82,11 +82,12 @@ Options:
   --keyrings-reset   Resets Arch and EndeavourOS keyrings.
                      Try this if keyring issues constantly make system update fail.
   --helper           AUR helper name. Supported: yay, paru, pacman.
-                     Default: pacman.
+                     Default: pacman
                      Other AUR helpers supporting option -Sua like yay should work as well.
   --paru             Same as --helper=paru.
   --yay              Same as --helper=yay.
-  --pacman           Same as --helper=pacman. Default. (Note: pacman does not support AUR directly)
+  --aur              Uses the AUR helper configured in /etc/eos-script-lib-yad.conf.
+  --pacman           Same as --helper=pacman. Default. (Note: pacman does not support AUR directly).
   --min-free-bytes   Minimal amount of free space (in bytes) that the root partition should have
                      before updating. Otherwise a warning message will be displayed.
                      Default: $min_free_bytes
