@@ -1,12 +1,19 @@
 #!/bin/bash
 
 # Package updater for EndeavourOS and Arch.
-# Handles db lock file, keyrings, syncing, and optionally AUR with given AUR helper.
+# Handles db lock file, keyrings, syncing, and optionally AUR with given AUR helper as well as Flatpak.
 
-echo2()   { echo "$@" >&2 ; }
+echo2()   { echo -e "$@" >&2 ; }
+echo3()   { echo -e "\n${BLUE}[>>]${RESET}${BOLD} $@${RESET}" >&2 ; }
+echo_err()   { echo -e "\n${RED}[!!]${RESET}${BOLD} $@${RESET}" >&2 ; }
 printf2() { printf "$@" >&2 ; }
 WARN()    { echo2 "==> $progname: warning: $1"; }
 DIE()     { echo2 "==> $progname: error: $1"; exit 1;  }
+
+RED='\033[1;31m'
+BLUE='\033[1;34m'
+BOLD='\033[1m'
+RESET='\033[0m'
 
 SetHelper() {
     for helper in "$@" "$EOS_AUR_HELPER" "$EOS_AUR_HELPER_OTHER" yay paru pacman ; do
@@ -33,7 +40,7 @@ ResetKeyrings() {
 
 Options() {
     local opts
-    local lopts="aur,dump-options,keyrings-reset,nvidia,no-keyring,helper:,min-free-bytes:,paru,yay,pacman,help"
+    local lopts="aur,dump-options,keyrings-reset,nvidia,no-keyring,helper:,min-free-bytes:,paru,yay,pacman,help,flatpak"
     local sopts="h"
 
     opts="$(/usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
@@ -48,6 +55,7 @@ Options() {
                 IsEndeavourOS && nvidia=yes || WARN "sorry, option $1 works only in EndeavourOS. Option ignored."
                 ;;
             --no-keyring) keyring=no ;;
+            --flatpak) flatpak=yes ;;
             --keyrings-reset) ResetKeyrings ;;
             --min-free-bytes) min_free_bytes="$2" ; shift ;;
             --helper) SetHelper "$2" ; shift ;;
@@ -72,6 +80,7 @@ Handles:
 - sync after update
 and optionally
 - AUR with given AUR helper
+- Flatpak updates
 - Nvidia driver vs. kernel updates (only on EndeavourOS)
 
 Usage: $progname [options]
@@ -86,6 +95,7 @@ Options:
                      Other AUR helpers supporting option -Sua like yay should work as well.
   --paru             Same as --helper=paru.
   --yay              Same as --helper=yay.
+  --flatpak          Update Flatpak applications 
   --aur              Uses the AUR helper configured in /etc/eos-script-lib-yad.conf.
   --pacman           Same as --helper=pacman. Default. (Note: pacman does not support AUR directly).
   --min-free-bytes   Minimal amount of free space (in bytes) that the root partition should have
@@ -144,6 +154,8 @@ Main() {
     local subopts=()
     local keyring=yes                             # user may disable keyring check with --no-keyring
     local nvidia=no                               # user may enable Nvidia check with --nvidia
+    local flatpak=no                              # user may enable Flatpak update with --flatpak
+    
 
     Options "$@"
 
@@ -157,12 +169,43 @@ Main() {
     if [ -e $lock ] && fuser $lock &>/dev/null ; then
         rmopt=i
     fi
-    echo2 "Updating..."
-    if [ "$helper" = "pacman" ] ; then
-        sudo bash -c "rm -$rmopt $lock; [ -e $lock ] || { pacman -Sy && eos-update-extras ${subopts[*]} && pacman -Su && sync ; }"
+
+    # Remove lock file
+    sudo rm "-$rmopt" "$lock"
+    
+    # Check if lock file was removed successfully
+    if [ ! -e "$lock" ]; then
+        # Update system packages
+        echo3 "Updating system packages"
+        sudo pacman -Sy
+        sudo eos-update-extras "${subopts[@]}"
+        sudo pacman -Su
+
+		# If AUR helper set, update AUR packages
+        if [ "$helper" != "pacman" ]; then
+            echo3 "Updating AUR packages"
+            $helper -Sua
+        fi
+    
+
+        # Update Flatpak applications if flag set
+        if [ "$flatpak" == "yes" ]; then
+            # Check if Flatpak is installed
+            if command -v flatpak >/dev/null; then
+                # Flatpak is installed
+                echo3 "Updating Flatpak applications"
+                flatpak update
+            else
+                # Flatpak is not installed
+                echo_err "Flatpak is not installed. Please install Flatpak to update Flatpak applications or remove --flatpak."
+            fi
+
+        fi
+    
+        # Synchronize filesystem
+        sync
     else
-        helper2="/usr/bin/sudo -u $LOGNAME $helper -Sua"
-        sudo bash -c "rm -$rmopt $lock; [ -e $lock ] || { pacman -Sy && eos-update-extras ${subopts[*]} && pacman -Su && $helper2 ; sync ; }"
+        echo_err "Failed to remove the lock file: $lock"
     fi
 }
 
