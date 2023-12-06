@@ -33,7 +33,7 @@ ResetKeyrings() {
 
 Options() {
     local opts
-    local lopts="aur,dump-options,keyrings-reset,nvidia,no-keyring,helper:,min-free-bytes:,paru,yay,pacman,help"
+    local lopts="aur,dump-options,flatpak,keyrings-reset,nvidia,no-keyring,helper:,min-free-bytes:,paru,yay,pacman,help"
     local sopts="h"
 
     opts="$(/usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
@@ -48,6 +48,7 @@ Options() {
                 IsEndeavourOS && nvidia=yes || WARN "sorry, option $1 works only in EndeavourOS. Option ignored."
                 ;;
             --no-keyring) keyring=no ;;
+            --flatpak) flatpak=yes ;;
             --keyrings-reset) ResetKeyrings ;;
             --min-free-bytes) min_free_bytes="$2" ; shift ;;
             --helper) SetHelper "$2" ; shift ;;
@@ -65,13 +66,14 @@ Options() {
             -h | --help)
                 cat <<EOF >&2
 Package updater for EndeavourOS and Arch
-Handles:
+Handles/updates:
 - keyrings
 - pacman db lock
 - disk space check
 - sync after update
 and optionally
 - AUR with given AUR helper
+- flatpaks
 - Nvidia driver vs. kernel updates (only on EndeavourOS)
 
 Usage: $progname [options]
@@ -88,6 +90,7 @@ Options:
   --yay              Same as --helper=yay.
   --aur              Uses the AUR helper configured in /etc/eos-script-lib-yad.conf.
   --pacman           Same as --helper=pacman. Default. (Note: pacman does not support AUR directly).
+  --flatpak          Additionally updates flatpaks.
   --min-free-bytes   Minimal amount of free space (in bytes) that the root partition should have
                      before updating. Otherwise a warning message will be displayed.
                      Default: $min_free_bytes
@@ -130,6 +133,9 @@ DiskSpace() {
     fi
 }
 
+echo2blue()  { echo2 "${BLUE}$1${RESET}" ; }
+echo2green() { echo2 "${GREEN}$1${RESET}" ; }
+
 Main() {
     local progname="${0##*/}"
     source /usr/share/endeavouros/scripts/eos-script-lib-yad || return 1
@@ -142,28 +148,40 @@ Main() {
     local isEndeavourOS=""
 
     local subopts=()
+    local afteropts=()
     local keyring=yes                             # user may disable keyring check with --no-keyring
     local nvidia=no                               # user may enable Nvidia check with --nvidia
+    local flatpak=no
+
+    local -r RED=$'\e[0;91m'
+    local -r GREEN=$'\e[0;92m'
+    local -r BLUE=$'\e[0;94m'
+    local -r MAGENTA=$'\e[0;95m'
+    local -r RESET=$'\e[0m'
+
 
     Options "$@"
 
     [ $nvidia  = yes ] && subopts+=(--nvidia)
     [ $keyring = yes ] && subopts+=(--keyrings)
+    [ $flatpak = yes ] && afteropts+=(--flatpak)
 
-    echo2 "$progname: package updater with additional features"
+    echo2blue "$progname: package updater with additional features"
 
     DiskSpace
 
     if [ -e $lock ] && fuser $lock &>/dev/null ; then
         rmopt=i
     fi
-    echo2 "Updating..."
     if [ "$helper" = "pacman" ] ; then
+        echo2green "Updating native apps..."
         sudo bash -c "rm -$rmopt $lock; [ -e $lock ] || { pacman -Sy && eos-update-extras ${subopts[*]} && pacman -Su && sync ; }"
     else
+        echo2green "Updating native and AUR apps..."
         helper2="/usr/bin/sudo -u $LOGNAME $helper -Sua"
         sudo bash -c "rm -$rmopt $lock; [ -e $lock ] || { pacman -Sy && eos-update-extras ${subopts[*]} && pacman -Su && $helper2 ; sync ; }"
     fi
+    eos-update-after "${afteropts[@]}"
 }
 
 Main "$@"
