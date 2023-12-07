@@ -73,7 +73,6 @@ Handles/updates:
 - sync after update
 and optionally
 - AUR with given AUR helper
-- flatpaks
 - Nvidia driver vs. kernel updates (only on EndeavourOS)
 
 Usage: $progname [options]
@@ -95,6 +94,7 @@ Options:
                      Default: $min_free_bytes
   --dump-options     Shows all supported options. Used for bash command completion.
 EOF
+# - flatpaks
 #  --flatpak          Additionally updates flatpaks.
                 exit 0
                 ;;
@@ -164,7 +164,7 @@ Main() {
 
     [ $nvidia  = yes ] && subopts+=(--nvidia)
     [ $keyring = yes ] && subopts+=(--keyrings)
-    [ $flatpak = yes ] && afteropts+=(--flatpak)
+    # [ $flatpak = yes ] && afteropts+=(--flatpak)
 
     echo2blue "$progname: package updater with additional features"
 
