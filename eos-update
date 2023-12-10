@@ -176,7 +176,7 @@ Main() {
         helper2="/usr/bin/sudo -u $LOGNAME $helper -Sua"
         sudo bash -c "rm -$rmopt $lock; [ -e $lock ] || { pacman -Sy && eos-update-extras ${subopts[*]} && pacman -Su && $helper2 ; sync ; }"
     fi
-    eos-update-after "${afteropts[@]}"
+    # eos-update-after "${afteropts[@]}"
 }
 
 Main "$@"
