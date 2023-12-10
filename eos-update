@@ -33,7 +33,7 @@ ResetKeyrings() {
 
 Options() {
     local opts
-    local lopts="aur,dump-options,keyrings-reset,nvidia,no-keyring,helper:,min-free-bytes:,paru,yay,pacman,help" # flatpak
+    local lopts="aur,dump-options,keyrings-reset,nvidia,no-keyring,helper:,min-free-bytes:,paru,yay,pacman,help"
     local sopts="h"
 
     opts="$(/usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
@@ -48,7 +48,6 @@ Options() {
                 IsEndeavourOS && nvidia=yes || WARN "sorry, option $1 works only in EndeavourOS. Option ignored."
                 ;;
             --no-keyring) keyring=no ;;
-            --flatpak) flatpak=yes ;;
             --keyrings-reset) ResetKeyrings ;;
             --min-free-bytes) min_free_bytes="$2" ; shift ;;
             --helper) SetHelper "$2" ; shift ;;
@@ -94,8 +93,6 @@ Options:
                      Default: $min_free_bytes
   --dump-options     Shows all supported options. Used for bash command completion.
 EOF
-# - flatpaks
-#  --flatpak          Additionally updates flatpaks.
                 exit 0
                 ;;
             
@@ -151,7 +148,6 @@ Main() {
     local afteropts=()
     local keyring=yes                             # user may disable keyring check with --no-keyring
     local nvidia=no                               # user may enable Nvidia check with --nvidia
-    local flatpak=no
 
     local -r RED=$'\e[0;91m'
     local -r GREEN=$'\e[0;92m'
@@ -164,7 +160,6 @@ Main() {
 
     [ $nvidia  = yes ] && subopts+=(--nvidia)
     [ $keyring = yes ] && subopts+=(--keyrings)
-    # [ $flatpak = yes ] && afteropts+=(--flatpak)
 
     echo2blue "$progname: package updater with additional features"
 
