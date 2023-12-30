@@ -1,44 +1,49 @@
 #!/bin/bash
 #
 # Checks that an internet connection exists.
-# Return value is 0 on success, or another number on failure.
-#
-# Program 'curl-exit-code-to-string' can convert the error code to a human readable message (see below).
+# Return value is 0 on success, or another number on failure (see also: 'curl-exit-code-to-string').
 #
 # Example usage:
 #    eos-connection-checker && echo connection is ON
 #    eos-connection-checker || echo connection is OFF
 #    eos-connection-checker || curl-exit-code-to-string $?
 
-GetFastestMirror() {
-    # This assumes eos-rankmirrors has been executed on the current list.
-    # If not, then this does essentially nothing.
-    grep -A10 "^# mirror [ ]*update-level" /etc/pacman.d/endeavouros-mirrorlist | grep "^# https://" | sort -k4 | head -n1 | awk '{print $2}' | sed 's|\([^$]*\)/\$.*|\1|'
+FastestMirror() { grep -m1 "^# https://" $ml | sed 's|# \([^$]*\)/\$.*|\1|' ; }                           # assumes the list was created with eos-rankmirrors
+AllMirrors()    { grep "^Server[ ]*=[ ]*https://" $ml | sed 's|^Server[ ]*=[ ]*\([^$]*\)/\$.*|\1|' ; }
+
+Test() {
+    local url="$1"
+    /usr/bin/curl --silent --fail --connect-timeout 8 "$url" >/dev/null
+    retval=$?
+    if [ $retval -eq 0 ] ; then
+        [ "$verbose" = "yes" ] && echo "Mirror = $url" >&2
+        exit 0                     # connection exists
+    fi
 }
 
 Main() {
-    # These addresses will be used for checking the availability of internet access.
-    # If you have issues with the addresses, please report this at this site:
-    #     https://forum.endeavouros.com
-    #
-    local URLs=(
-        # This should work globally.
-        #https://geoip.kde.org/v1/calamares   # this doesn't seem to work anymore?
-
-        # EndeavourOS mirrors (fastest first).
-
-        $(GetFastestMirror)
-        $(grep ^Server /etc/pacman.d/endeavouros-mirrorlist | sed 's|^Server[ ]*=[ ]*\([^$]*\)/\$.*|\1|')
-    )
+    local -r ml=/etc/pacman.d/endeavouros-mirrorlist
+    local -r fastest="$(FastestMirror)"
+    local others=""
     local URL
     local retval
+    local verbose=no
 
-    for URL in "${URLs[@]}" ; do
-        /usr/bin/curl --silent --fail --connect-timeout 8 "$URL" >/dev/null
-        retval=$?
-        [ $retval -eq 0 ] && break
+    case "$1" in
+        -v | --verbose) verbose=yes ;;   # will show the responding mirror URL
+    esac
+
+    if [ "$fastest" ] ; then
+        Test "$fastest"
+        others="$(AllMirrors | grep -v "$fastest")"
+    else
+        others="$(AllMirrors)"
+    fi
+
+    for URL in $others ; do
+        Test "$URL"
     done
-    return $retval
+    return $retval                       # no connection
 }
 
 Main "$@"

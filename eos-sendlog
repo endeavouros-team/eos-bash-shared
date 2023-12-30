@@ -1,19 +1,72 @@
 #!/bin/bash
 
-# Like the "old" eos-sendlog, but can also take the command as parameter.
-# The command from parameters will output in English.
-#
-# Tip: multiple commands (including parameters) can be given too:
-#    eos-sendlog bash -c "command1 ; command2 ; command3"
-#
-# Tip2: user can select the pastebin provider (see 'eos-sendlog-helper -h'):
-#    echo foobar | eos-sendlog --termbin
+# Like the "old" eos-sendlog, with an addition to take the input from multiple commands.
+
+DIE()     { echo "$progname: error: $1" >&2; exit 1; }
+Verbose() { [ $verbose = yes ] && echo -e "$@" >&2 ; }
+
+Options() {
+    local opts
+    local sopts="hv"
+    local lopts="0x0,dpaste,termbin"    # pastebin options
+    lopts+=",help,verbose"              # general options
+
+    opts="$(/bin/getopt -o="$sopts" --longoptions "$lopts" --name "$progname" -- "$@")" || Usage 1
+    eval set -- "$opts"
+
+    while true ; do
+        case "$1" in
+            --0x0 | --dpaste | --termbin)  pastebin_service="$1" ;;
+            -h | --help)                   Usage 0 ;;
+            -v | --verbose)                verbose=yes ;;
+            --)                            shift; break ;;
+            *)                             break ;;
+        esac
+        shift
+    done
+    [ "$1" ] && commands="$*"
+}
+
+Usage() {
+    cat <<EOF >&2
+Usage:
+    1. input from one command via stdin:
+          <command> | $progname [$progname-options]
+    2. input from outputs of multiple commands:
+          $progname [$progname-options] "<command1> ; <command2> ; <command3> ..."
+${progname}-options:
+    --0x0           Use only pastebin 0x0.st.
+    --dpaste        Use only pastebin dpaste.com.
+    --termbin       Use only pastebin termbin.com.
+    --help, -h      This help.
+    --verbose, -v   Be more verbose.
+Without ${progname}-options the services are tried in order:
+    1. 0x0
+    2. dpaste
+    3. termbin
+until one succeeds or all fail.
+
+Examples:
+    inxi -Fza | $progname --dpaste
+    $progname "pacman -Qm ; lsusb"
+EOF
+    [ "$1" ] && exit "$1"
+}
 
 Main() {
-    if [ "$1" ] ; then
-        LANG=C "$@" | eos-sendlog-helper
+    local progname=${0##*/}
+    local pastebin_service=""
+    local commands=""
+    local verbose=no
+
+    Options "$@"
+
+    if [ "$commands" ] ; then
+        Verbose "==> input from commands..."
+        LANG=C bash -c "$commands" | eos-sendlog-helper $pastebin_service
     else
-        eos-sendlog-helper "$@"    # $@ = options for eos-sendlog-helper
+        Verbose "==> input from stdin..."
+        eos-sendlog-helper $pastebin_service
     fi
 }
 
