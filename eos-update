@@ -33,7 +33,7 @@ ResetKeyrings() {
 
 Options() {
     local opts
-    local lopts="aur,dump-options,keyrings-reset,nvidia,no-keyring,helper:,min-free-bytes:,paru,yay,pacman,help"
+    local lopts="aur,dump-options,keyrings-reset,nvidia,no-keyring,no-sync,helper:,min-free-bytes:,paru,yay,pacman,help"
     local sopts="h"
 
     opts="$(/usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
@@ -48,6 +48,7 @@ Options() {
                 IsEndeavourOS && nvidia=yes || WARN "sorry, option $1 works only in EndeavourOS. Option ignored."
                 ;;
             --no-keyring) keyring=no ;;
+            --no-sync) sync=":" ;;
             --keyrings-reset) ResetKeyrings ;;
             --min-free-bytes) min_free_bytes="$2" ; shift ;;
             --helper) SetHelper "$2" ; shift ;;
@@ -69,7 +70,7 @@ Handles/updates:
 - keyrings
 - pacman db lock
 - disk space check
-- sync after update
+- sync after update (unless disabled by --no-sync)
 and optionally
 - AUR with given AUR helper
 - Nvidia driver vs. kernel updates (only on EndeavourOS)
@@ -81,6 +82,7 @@ Options:
   --no-keyring       Do not try to update keyrings first.
   --keyrings-reset   Resets Arch and EndeavourOS keyrings.
                      Try this if keyring issues constantly make system update fail.
+  --no-sync          Do not run 'sync' after update.
   --helper           AUR helper name. Supported: yay, paru, pacman.
                      Default: pacman
                      Other AUR helpers supporting option -Sua like yay should work as well.
@@ -148,13 +150,13 @@ Main() {
     local afteropts=()
     local keyring=yes                             # user may disable keyring check with --no-keyring
     local nvidia=no                               # user may enable Nvidia check with --nvidia
+    local sync="sync"
 
     local -r RED=$'\e[0;91m'
     local -r GREEN=$'\e[0;92m'
     local -r BLUE=$'\e[0;94m'
     local -r MAGENTA=$'\e[0;95m'
     local -r RESET=$'\e[0m'
-
 
     Options "$@"
 
@@ -170,13 +172,12 @@ Main() {
     fi
     if [ "$helper" = "pacman" ] ; then
         echo2green "Updating native apps..."
-        sudo bash -c "rm -$rmopt $lock; [ -e $lock ] || { pacman -Sy && eos-update-extras ${subopts[*]} && pacman -Su && sync ; }"
+        sudo bash -c "rm -$rmopt $lock; [ -e $lock ] || { pacman -Sy && eos-update-extras ${subopts[*]} && pacman -Su && $sync ; }"
     else
         echo2green "Updating native and AUR apps..."
         helper2="/usr/bin/sudo -u $LOGNAME $helper -Sua"
-        sudo bash -c "rm -$rmopt $lock; [ -e $lock ] || { pacman -Sy && eos-update-extras ${subopts[*]} && pacman -Su && $helper2 ; sync ; }"
+        sudo bash -c "rm -$rmopt $lock; [ -e $lock ] || { pacman -Sy && eos-update-extras ${subopts[*]} && pacman -Su && $helper2 ; $sync ; }"
     fi
-    # eos-update-after "${afteropts[@]}"
 }
 
 Main "$@"
