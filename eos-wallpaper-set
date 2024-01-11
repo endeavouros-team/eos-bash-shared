@@ -175,6 +175,17 @@ WallpaperSetCommon() {
             #DIE "Sorry, desktop '$DE' is not supported."
             ;;
     esac
+
+    if [ ! -e "$history_of_backgrounds" ] ; then
+        local header="History of desktop wallpapers set by $progname (started at $(date '+%x %X'))"
+        local underline=${header//?/=}
+        cat <<EOF > "$history_of_backgrounds"
+$header
+$underline
+
+EOF
+    fi
+    echo "$(date '+%x %X'): $(realpath "$pic")" >> "$history_of_backgrounds"
 }
 
 PictureNameVariations() {
@@ -308,6 +319,7 @@ Main()
     local DE="$(eos_GetDeOrWm)"
     local picfolder=/usr/share/endeavouros/backgrounds
     local pic=""
+    local history_of_backgrounds="$HOME/.$progname.history-of-wallpapers"   # saves history of wallpaper file names
 
     case "$DE" in
         XFCE) type xrandr >& /dev/null || DIE "Sorry, this implementation needs package 'xorg-xrandr' on Xfce." ;;
