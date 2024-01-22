@@ -40,8 +40,9 @@ DoesSudo()    { groups | grep -Pw 'root|wheel' >/dev/null ; }
 
 PacdiffCmd() {
     local differ="$1"
-    local cmd="" prompt=""
+    local prompt=""
     local msg=""
+    local -r pacdiff="/usr/local/bin/pacdiff-eos"    # will backup original file on view mode too (with option -b)
     
     if HasPacdiffs ; then
         case "$differ" in            # some differs may need options
@@ -49,19 +50,37 @@ PacdiffCmd() {
         esac
 
         msg="Starting pacdiff & $differ as root ..."
-
         prompt="echo '$msg'"
+
+        local cmdfile=$(mktemp)
+        local doas="/usr/bin/su-c_wrapper"
+
+        cat <<EOF > $cmdfile
+#!/bin/bash
+/usr/bin/cp /usr/bin/pacdiff $pacdiff
+/usr/bin/sed -i $pacdiff -e "s|\(v\|V)\)|\1 test \\\$BACKUP -ne 0 \&\& \\\$SUDO cp -v \"\\\$file\" \"\\\$file.bak\"|"
+EOF
         if DoesSudo ; then
-            cmd="/usr/bin/sudo DIFFPROG='/usr/bin/$differ' /usr/bin/pacdiff 2>/dev/null"
+            doas="/usr/bin/sudo"
+            cat <<EOF >> $cmdfile
+DIFFPROG="/usr/bin/$differ" $pacdiff -b 2>/dev/null
+EOF
         else
-            cmd="DIFFPROG='/usr/bin/$differ' /usr/bin/su-c_wrapper -p /usr/bin/pacdiff 2>/dev/null"
+            cat <<EOF >> $cmdfile
+DIFFPROG="/usr/bin/$differ" $doas -p $pacdiff -b 2>/dev/null
+EOF
         fi
+        cat <<EOF >> $cmdfile
+rm -f $pacdiff
+EOF
+        chmod u+x,go-rwx $cmdfile
 
         if [ $start_new_terminal = yes ] ; then
-            RunInTerminal "$prompt ; $cmd"
+            RunInTerminal "$prompt ; $doas $cmdfile"
         else
-            bash -c "$prompt ; $cmd"
+            bash -c "$prompt ; $doas $cmdfile"
         fi
+        rm -f $cmdfile
         return $diffs_yes
     else
         msg="eos-pacdiff: nothing to do."
