@@ -25,22 +25,26 @@ Test() {
 
 Main() {
     local -r ml=/etc/pacman.d/endeavouros-mirrorlist
-    local -r fastest="$(FastestMirror)"
+    local fastest=""
     local others=""
     local URL
-    local retval
+    local retval=201
     local verbose=no
 
     case "$1" in
         -v | --verbose) verbose=yes ;;   # will show the responding mirror URL
     esac
 
-    if [ "$fastest" ] ; then
-        Test "$fastest"
-        others="$(AllMirrors | grep -v "$fastest")"
-    else
-        others="$(AllMirrors)"
+    if [ -e $ml ] ; then
+        fastest="$(FastestMirror)"
+        if [ "$fastest" ] ; then
+            Test "$fastest"
+            others="$(AllMirrors | grep -v "$fastest")"
+        else
+            others="$(AllMirrors)"
+        fi
     fi
+    [ "$others" ] || others="https://forum.endeavouros.com/faq"  # fallback if no mirrors
 
     for URL in $others ; do
         Test "$URL"
