@@ -8,12 +8,14 @@
 #    eos-connection-checker || echo connection is OFF
 #    eos-connection-checker || curl-exit-code-to-string $?
 
-FastestMirror() { grep -m1 "^# https://" $ml | sed 's|# \([^$]*\)/\$.*|\1|' ; }                           # assumes the list was created with eos-rankmirrors
-AllMirrors()    { grep "^Server[ ]*=[ ]*https://" $ml | sed 's|^Server[ ]*=[ ]*\([^$]*\)/\$.*|\1|' ; }
+# FastestMirror assumes the list was created with eos-rankmirrors.
+# Both functions below return the URLs in format: https://mirror.moson.org/endeavouros/repo/state
+FastestMirror() { grep -m1 "^# https://" $ml | sed 's|# \([^$]*\)/\$.*|\1/state|' ; }
+AllMirrors()    { grep "^Server[ ]*=[ ]*https://" $ml | sed 's|^Server[ ]*=[ ]*\([^$]*\)/\$.*|\1/state|' ; }
 
 Test() {
     local url="$1"
-    /usr/bin/curl --silent --fail --connect-timeout 8 "$url" >/dev/null
+    /usr/bin/curl --silent --fail --connect-timeout 8 "$url" >/dev/null  # download the 'state' file from a mirror
     retval=$?
     if [ $retval -eq 0 ] ; then
         [ "$verbose" = "yes" ] && echo "Mirror = $url" >&2
