@@ -15,7 +15,7 @@ UserWants() {
 SafetyWarning() {
     if [ "$EOS_PACDIFF_WARNING" = "yes" ] ; then
         local txt=""
-        txt+="NOTE: <b>eos-pacdiff</b> is a powerful tool, so use it carefully!\n\n"
+        txt+="NOTE: <b>$progname</b> is a powerful tool, so use it carefully!\n\n"
         txt+="For example, please do <i>not</i> modify files like:\n"
         txt+="<tt>    /etc/passwd</tt>\n"
         txt+="<tt>    /etc/group</tt>\n"
@@ -38,11 +38,25 @@ SafetyWarning() {
 HasPacdiffs() { test -n "$(echo q | DIFFPROG=diff /usr/bin/pacdiff)" ; }
 DoesSudo()    { groups | grep -Pw 'root|wheel' >/dev/null ; }
 
+HasBackupInView() {
+    [ "$BACKUP_VIEW" = "yes" ] || return
+    cat <<EOF >> $cmdfile
+/usr/bin/sed -i $pacdiff -e "s|\(v\|V)\)|\1 test \\\$BACKUP -ne 0 \&\& \\\$SUDO cp -v \"\\\$file\" \"\\\$file.bak\"|"
+EOF
+}
+HasBackupInMerge() {
+    [ "$BACKUP_MERGE" = "yes" ] || return
+    cat <<EOF >> $cmdfile
+/usr/bin/sed -i $pacdiff -e "s|\(m\|M)\)|\1 test \\\$BACKUP -ne 0 \&\& \\\$SUDO cp -v \"\\\$file\" \"\\\$file.bak\"|"
+EOF
+}
+
 PacdiffCmd() {
     local differ="$1"
     local prompt=""
     local msg=""
     local -r pacdiff="/usr/local/bin/pacdiff-eos"    # will backup original file on view mode too (with option -b)
+    local bopt=""
     
     if HasPacdiffs ; then
         case "$differ" in            # some differs may need options
@@ -58,21 +72,18 @@ PacdiffCmd() {
         cat <<EOF > $cmdfile
 #!/bin/bash
 /usr/bin/cp /usr/bin/pacdiff $pacdiff
-/usr/bin/sed -i $pacdiff -e "s|\(v\|V)\)|\1 test \\\$BACKUP -ne 0 \&\& \\\$SUDO cp -v \"\\\$file\" \"\\\$file.bak\"|"
 EOF
+        [ "$BACKUP_OVERWRITE" = "yes" ] && bopt="--backup"  # may backup before overwrite
+        HasBackupInView                           # may backup before view too
+        HasBackupInMerge                          # may backup before merge too
+
         if DoesSudo ; then
             doas="/usr/bin/sudo"
-            cat <<EOF >> $cmdfile
-DIFFPROG="/usr/bin/$differ" $pacdiff -b 2>/dev/null
-EOF
+            echo "DIFFPROG=\"/usr/bin/$differ\" $pacdiff $bopt 2>/dev/null" >> $cmdfile
         else
-            cat <<EOF >> $cmdfile
-DIFFPROG="/usr/bin/$differ" $doas -p $pacdiff -b 2>/dev/null
-EOF
+            echo "DIFFPROG=\"/usr/bin/$differ\" $doas -p $pacdiff $bopt 2>/dev/null" >> $cmdfile
         fi
-        cat <<EOF >> $cmdfile
-rm -f $pacdiff
-EOF
+        echo "rm -f $pacdiff" >> $cmdfile
         chmod u+x,go-rwx $cmdfile
 
         if [ $start_new_terminal = yes ] ; then
@@ -83,7 +94,7 @@ EOF
         rm -f $cmdfile
         return $diffs_yes
     else
-        msg="eos-pacdiff: nothing to do."
+        msg="$progname: nothing to do."
         if UserWants cli ; then
             echo "$indent$msg" >&2
         fi
@@ -97,22 +108,40 @@ EOF
 
 Usage() {
     cat <<EOF
-Usage:    eos-pacdiff [options]
+Usage:    $progname [options]
 Options:  -h, --help          This help.
+          -b, --backup        Save the old files (in view, merge, and overwrite modes) with .bak.
           --nt                Starts a new terminal for the output (used by the Welcome app).
           --quiet             Do not display messages.
-          --msg-types=HOW     Selects how informational messages will be displayed.
-                              Supported values for HOW:
+          --msg-types=WHAT    Selects how informational messages will be displayed.
+                              Supported values for WHAT:
                                  "cli"   Only using terminal CLI.
                                  "gui"   Only using popup windows.
                                  "both"  "cli" + "gui".
                                  ""      Do not display messages (same as --quiet).
                               Default: "both".
 EOF
+    case "$1" in
+        OK)   exit 0 ;;
+        FAIL) exit 1 ;;
+    esac
+}
+
+DIE() {
+    local linenr="$1"
+    local msg="$2"
+
+    case "$linenr" in
+        [1-9]*) linenr=" (line $linenr)" ;;
+        *)      linenr="" ;;
+    esac
+    echo -e "\n==> $progname$linenr: error: $msg\n" >&2
+    Usage FAIL
 }
 
 Main()
 {
+    local progname=${0##*/}
     # exit codes
     local diffs_yes=0
     local diffs_error=1
@@ -121,23 +150,52 @@ Main()
 
     local start_new_terminal=no
     local indent=""
-    local quiet=no
     local user_wants=both
+    local BACKUP_OVERWRITE=no
+    local BACKUP_VIEW=no
+    local BACKUP_MERGE=no
+    local -r extra_conf=/etc/$progname.conf
+    local arg
 
-    while [ "$1" ] ; do
-        case "$1" in
-            -h | --help) Usage; return ;;
-            --indent=*)  indent="${1#*=}" ;;
-            --nt)        start_new_terminal=yes ;;
-            --quiet)     user_wants="" ;;
-            --msg-types=*) user_wants="${1#*=}" ;;        # cli gui both ""
+    # pre-handling of certain options
+    for arg in "$@" ; do
+        case "$arg" in
+            --quiet)       user_wants="" ;;
+            --msg-types=*) user_wants="${1#*=}" ;;             # cli gui both ""
         esac
-        shift
     done
+
     source /usr/share/endeavouros/scripts/eos-script-lib-yad || return $diffs_error
     export -f eos_yad
     export -f eos_yad_nothing_todo
     AssignIconVariables_in_eos_bash_shared
+
+    # read config file if it exists; command line options will override config file values
+    if [ -e $extra_conf ] ; then
+        case "$user_wants" in
+            cli | both) echo "==> reading $extra_conf" >&2 ;;
+        esac
+        source $extra_conf
+    else
+        echo "==> info: file $extra_conf is not available." >&2
+    fi
+
+    # handle rest of the options
+    while [ "$1" ] ; do
+        case "$1" in
+            -h | --help)   Usage OK ;;
+            -b | --backup) BACKUP_OVERWRITE=yes
+                           BACKUP_VIEW=yes
+                           BACKUP_MERGE=yes
+                           ;;
+            --indent=*)    indent="${1#*=}" ;;
+            --nt)          start_new_terminal=yes ;;
+            --quiet)       ;; # user_wants="" ;;
+            --msg-types=*) ;; # user_wants="${1#*=}" ;;             # cli gui both ""
+            -*)            DIE $LINENO "option '$1' not supported." ;;
+        esac
+        shift
+    done
 
     SafetyWarning
 
