@@ -32,6 +32,32 @@ Tee() {
     return $?
 }
 
+GeneralWarning() {
+    declare -A urls=(
+        [0x0]="https://0x0.st"
+        [dpaste]="https://dpaste.com"
+        [termbin]="termbin.com"
+    )
+    local txt=""
+
+    txt+="You are about to send <i>your data</i> to a pastebin service on the internet.\n"
+    txt+="Anyone will be able to see the data.\n"
+    txt+="Please make sure you are not sending any unwanted information.\n\n"
+    txt+="If you want to manage the information you've sent already, please contact <b>${urls[$srv]}</b>.\n"
+
+    local cmd=(
+        eos_yad --form --title="Warning" --text="$txt"
+        --button="yad-quit!!Do not send":1 --button="yad-execute!!Continue sending":3
+    )
+
+    "${cmd[@]}"
+
+    case "$?" in
+        3) echo "Sending." >&2 ;;
+        *) echo "Nothing sent." >&2; exit 0 ;;
+    esac
+}
+
 Main() {
     local -r progname="${0##*/}"
     local -r log=/tmp/tmp.$progname.log
@@ -39,9 +65,11 @@ Main() {
     local -r curl="/bin/curl --fail -Lsm $timeout"
     local count=0
     local services=()
+    local testing=no
 
     while true ; do
         case "$1" in
+            --testing) testing=yes ;;
             --0x0 | --dpaste | --termbin)  services+=("${1:2}"); break ;;
             --help | -h)                   Usage 0 ;;
             -*)                            echo2 "Unsupported option '$1'"; exit 1 ;;
@@ -56,10 +84,17 @@ Main() {
         shift
     done
 
-    local -r input=$(cat)
+    if [ "$testing" = "no" ] ; then
+        local -r input=$(cat)
+    else
+        local -r input="this is a test"
+    fi
     [ "$input" ] || DIE "No input!"
 
+    source /usr/share/endeavouros/scripts/eos-script-lib-yad || exit 1
+
     for srv in "${services[@]}" ; do
+        GeneralWarning
         if Tee "$srv" ; then
             cat $log
             return 0
