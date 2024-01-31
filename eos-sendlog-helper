@@ -14,13 +14,27 @@ Options:
    --dpaste      Uses dpaste.com
    --termbin     Uses termbin.com
    --help, -h    This help
+   --expire=*    Specifies the URL expiration time in days.
+
 Without options the services are tried in order until one succeeds or all fail.
 Trial order: 0x0 dpaste termbin.
 EOF
     [ "$1" ] && exit "$1"
 }
 
-0x0()         { $curl -F'file=@-' https://0x0.st ; }
+0x0() {
+    local url code
+
+    url=$($curl --fail -F'file=@-' -Fexpires=$((expire * 24)) https://0x0.st)
+    code=$?
+    if [ $code -eq 0 ] ; then
+        echo "$url"
+        echo "--> The URL below will expire in $expire days." >&2
+    else
+        echo "==> 'curl' failed with code $code." >&2
+    fi
+    return $code
+}
 dpaste()      { $curl -F "content=<-" https://dpaste.com/api/v2/ ; }
 termbin()     { [ -x /bin/nc ] || return 1; nc -w $timeout termbin.com 9999; }
 ix.io()       { $curl -F'f:1=<-'  ix.io ; }                            # 2023/12/04: fails??
@@ -53,7 +67,7 @@ GeneralWarning() {
     "${cmd[@]}"
 
     case "$?" in
-        3) echo "Sending." >&2 ;;
+        3) ;; # echo "Sending." >&2 ;;
         *) echo "Nothing sent." >&2; exit 0 ;;
     esac
 }
@@ -66,12 +80,14 @@ Main() {
     local count=0
     local services=()
     local testing=no
+    local expire=7     # this initial value here will always be overwritten by eos-sendlog
 
     while true ; do
         case "$1" in
             --testing) testing=yes ;;
             --0x0 | --dpaste | --termbin)  services+=("${1:2}"); break ;;
             --help | -h)                   Usage 0 ;;
+            --expire=*)                    expire="${1#*=}" ;;
             -*)                            echo2 "Unsupported option '$1'"; exit 1 ;;
             *) services=(
                      0x0
@@ -94,7 +110,7 @@ Main() {
     source /usr/share/endeavouros/scripts/eos-script-lib-yad || exit 1
 
     for srv in "${services[@]}" ; do
-        GeneralWarning
+        [ "$testing" = "no" ] && GeneralWarning
         if Tee "$srv" ; then
             cat $log
             return 0

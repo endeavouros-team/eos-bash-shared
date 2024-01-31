@@ -7,9 +7,9 @@ Verbose() { [ $verbose = yes ] && echo -e "$@" >&2 ; }
 
 Options() {
     local opts
-    local sopts="hv"
+    local sopts="e:hv"
     local lopts="0x0,dpaste,termbin"    # pastebin options
-    lopts+=",help,verbose"              # general options
+    lopts+=",expire:,help,verbose"      # general options
 
     opts="$(/bin/getopt -o="$sopts" --longoptions "$lopts" --name "$progname" -- "$@")" || Usage 1
     eval set -- "$opts"
@@ -17,6 +17,7 @@ Options() {
     while true ; do
         case "$1" in
             --0x0 | --dpaste | --termbin)  pastebin_service="$1" ;;
+            -e | --expire)                 expire="$2"; shift ;;
             -h | --help)                   Usage 0 ;;
             -v | --verbose)                verbose=yes ;;
             --)                            shift; break ;;
@@ -40,6 +41,9 @@ ${progname}-options:
     --termbin       Use only pastebin termbin.com.
     --help, -h      This help.
     --verbose, -v   Be more verbose.
+    --expire, -e    The URL will expire in X days. Default: $expire_def.
+                    Currently supported only for 0x0.st.
+
 Without ${progname}-options the services are tried in order:
     1. 0x0
     2. dpaste
@@ -58,15 +62,19 @@ Main() {
     local pastebin_service=""
     local commands=""
     local verbose=no
+    local -r expire_def=7      # days
+    local expire=$expire_def   # days
 
     Options "$@"
 
+    expire="--expire=$expire"
+
     if [ "$commands" ] ; then
         Verbose "==> input from commands..."
-        LANG=C bash -c "$commands" | eos-sendlog-helper $pastebin_service
+        LANG=C bash -c "$commands" | eos-sendlog-helper $pastebin_service $expire
     else
         Verbose "==> input from stdin..."
-        eos-sendlog-helper $pastebin_service
+        eos-sendlog-helper $pastebin_service $expire
     fi
 }
 
