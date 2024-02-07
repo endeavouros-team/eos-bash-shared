@@ -23,6 +23,7 @@ where
    --wifi         shows info about the wireless LAN device
    --ethernet     shows info about the ethernet controller
    --display      shows info about the display controller
+   --nvidia-gpuid shows the id (4 hex numbers, lowercase) of the installed Nvidia card
    --vga          shows info about the VGA compatible controller and 3D controller
    --graphics     same as both --vga and --display
    --cpu          shows the name of the CPU type
@@ -31,6 +32,10 @@ where
 EOF
 }
 
+NvidiaGpuId() {
+    local -r NVIDIA="10de"
+    lspci -vnn | grep -P 'VGA|Display|3D' | grep "\[$NVIDIA:" | sed "s|.*\[$NVIDIA:\([0-9a-f]*\).*|\1|"
+}
 PCI_info() {
     # Many search strings may be given - show all results.
     local result
@@ -112,6 +117,7 @@ Main()
             --display)             PCI_info " Display controller: " ;;
             --vga)                 PCI_info " VGA compatible controller: " " 3D controller: " ;;
             --graphics)            Main --vga ; Main --display ;;
+            --nvidia-gpuid)        NvidiaGpuId ;;
 
             *)                     Usage "unsupported option '$arg'"
                                    return 1
