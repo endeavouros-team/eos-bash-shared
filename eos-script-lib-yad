@@ -923,6 +923,8 @@ eos_running_kernel() {
     fi
 }
 
+eos_is_in_chroot() { [ "$(stat -c %d:%i /)" != "$(sudo stat -c %d:%i /proc/1/root/.)" ] ; }
+
 _bg_or_bashdb() {
     # If the "main" function of a script should run in background *and*
     # sometimes the script needs to be debugged with bashdb,
