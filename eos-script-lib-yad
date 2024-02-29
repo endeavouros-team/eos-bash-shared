@@ -878,6 +878,7 @@ else
     case "$EOS_ROOTER" in
         su           | "su -c"          | "/usr/bin/su -c" | "")     export EOS_ROOTER="eos-run-cmd-with-su" ;;          # default!
         sudo         | "sudo bash -c"   | "/usr/bin/sudo bash -c")   export EOS_ROOTER="sudo bash -c" ;;
+        doas         | "doas bash -c"   | "/usr/bin/doas bash -c")   export EOS_ROOTER="doas bash -c" ;;                 # experimental!
         pkexec       | "pkexec bash -c" | "/usr/bin/pkexec bash -c") export EOS_ROOTER="/usr/bin/pkexec bash -c" ;;
         su-c_wrapper)                                                export EOS_ROOTER="/usr/bin/su-c_wrapper bash -c" ;;
         *)
@@ -923,7 +924,14 @@ eos_running_kernel() {
     fi
 }
 
-eos_is_in_chroot() { [ "$(stat -c %d:%i /)" != "$(sudo stat -c %d:%i /proc/1/root/.)" ] ; }
+eos_is_in_chroot() {
+    if [ "$EUID" != "0" ] ; then
+        echo "==> $FUNCNAME(): elevated privileges required." >&2
+        echo " -> $FUNCNAME() called from file ${BASH_SOURCE[1]}, line ${BASH_LINENO[0]}." >&2
+        return 0
+    fi
+    [ "$(stat -c %d:%i /)" != "$(stat -c %d:%i /proc/1/root/.)" ]
+}
 
 _bg_or_bashdb() {
     # If the "main" function of a script should run in background *and*
@@ -939,5 +947,3 @@ _bg_or_bashdb() {
         *)      "$@" & ;;         # otherwise run in background
     esac
 }
-# if [ "${BASH_SOURCE[*]}" != "${BASH_SOURCE[*]//\/bashdb/}" ] ; then
-# fi
