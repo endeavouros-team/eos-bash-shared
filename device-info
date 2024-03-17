@@ -17,7 +17,7 @@ Usage() {
     test -n "$1" && echo "Error: $1." >&2
 
     cat <<EOF >&2
-Usage: $0 option
+Usage: $progname option
 where
    --wireless
    --wifi         shows info about the wireless LAN device
@@ -96,34 +96,52 @@ Ethernet() {
     EthernetShow "driver in use" "$driver"
 }
 
-Main()
-{
-    test -n "$1" || { Usage "option missing" ; return 1 ; }
+Options() {
+    opts="$(/bin/getopt -o="$SO" --longoptions "$LO,$LO2" --name "$progname" -- "$@")" || {
+        Usage
+        return 1
+    }
+    eval set -- "$opts"
 
-    local arg
-
-    for arg in "$@"
-    do
-        case "$arg" in
+    while true ; do
+        case "$1" in
             --cpu)                 CPU_info ;;
-
+            --display)             PCI_info " Display controller: " ;;
+            --ethernet)            Ethernet ;;
+            --graphics)            $FUNCNAME --vga ; $FUNCNAME --display ;;
+            --nvidia-gpuid)        NvidiaGpuId ;;
+            --vga)                 PCI_info " VGA compatible controller: " " 3D controller: " ;;
             --virtualbox)          InVirtualBox ;;
             --vm)                  InVm ;;
+            --wifi | --wireless)   PCI_info " Network controller: " ;;
 
-            --wireless | --wifi)   PCI_info " Network controller: " ;;
+            --help | -h)           Usage; return 0 ;;
 
-            --ethernet)            Ethernet ;;
+            --dump-options)        echo "${SO//?/-& }--${LO//,/ --} --${LO2//,/ --}"
+                                   ## - LO may *not* be empty
+                                   ## - SO handling requires 'patsub_replacement' enabled by 'shopt'
+                                   ;;
 
-            --display)             PCI_info " Display controller: " ;;
-            --vga)                 PCI_info " VGA compatible controller: " " 3D controller: " ;;
-            --graphics)            Main --vga ; Main --display ;;
-            --nvidia-gpuid)        NvidiaGpuId ;;
-
-            *)                     Usage "unsupported option '$arg'"
+            --)                    shift; break ;;
+            *)                     Usage "unsupported option '$1'"
                                    return 1
                                    ;;
         esac
+        shift
     done
+}
+
+Main()
+{
+    local -r progname="${0##*/}"
+    local -r LO="cpu,display,ethernet,graphics,help,nvidia-gpuid,vga,virtualbox,vm,wifi,wireless"
+    local -r LO2="dump-options"
+    local -r SO="h"
+    local opts
+    
+    test -n "$1" || { Usage "option missing" ; return 1 ; }
+
+    Options "$@"
 }
 
 Main "$@"

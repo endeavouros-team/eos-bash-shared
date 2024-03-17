@@ -1,0 +1,18 @@
+# bash completion for device-info        -*- shell-script -*-
+
+_device-info_complete() {
+    COMPREPLY=( $(compgen -W "$1" -- "$cur") )
+    [[ $COMPREPLY == *= ]] && compopt -o nospace
+}
+
+_device-info_() 
+{
+    local cur prev #words cword split
+    _init_completion -s || return
+
+    case "$prev" in
+        -*) ;;
+        *) _device-info_complete "$(device-info --dump-options)" ;;
+    esac
+}
+complete -F _device-info_    device-info
