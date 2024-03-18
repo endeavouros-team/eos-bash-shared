@@ -12,7 +12,9 @@ IsRunningKernel() {
 }
 
 DoNotify() {
-    echo "$target" > /var/log/eos-reboot-required-trigger.log
+    local logfile=/var/log/reboot-recommendation-trigger.log
+    echo "[$(/bin/date "+%x %X")] Reboot recommendation triggered by updating package: $target" > $logfile
+    chmod o-rwx $logfile
     systemctl enable --now eos-reboot-required.timer
     exit 0
 }
