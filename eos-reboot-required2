@@ -26,6 +26,8 @@ Main() {
 
     eos_is_in_chroot && return 0
 
+    [ "$EOS_REBOOT_RECOMMENDING" = "no" ] && return 0
+
     local targets=$(cat)  # list of updated package names from the hook (stdin)
     local target
     local running_kernel=""
