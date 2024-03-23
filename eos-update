@@ -31,9 +31,16 @@ ResetKeyrings() {
     exit 0
 }
 
+ClearDatabases() {
+    Cmd sudo rm /var/lib/pacman/sync/*
+    echo2 "Package databases cleared."
+    exit 0
+}
+
+
 Options() {
     local opts
-    local lopts="aur,dump-options,keyrings-reset,nvidia,no-keyring,no-sync,helper:,min-free-bytes:,paru,yay,pacman,help"
+    local lopts="aur,clear-databases,dump-options,keyrings-reset,nvidia,no-keyring,no-sync,helper:,min-free-bytes:,paru,yay,pacman,help"
     local sopts="h"
 
     opts="$(/usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
@@ -47,13 +54,14 @@ Options() {
             --nvidia)
                 IsEndeavourOS && nvidia=yes || WARN "sorry, option $1 works only in EndeavourOS. Option ignored."
                 ;;
-            --no-keyring) keyring=no ;;
-            --no-sync) sync=":" ;;
-            --keyrings-reset) ResetKeyrings ;;
-            --min-free-bytes) min_free_bytes="$2" ; shift ;;
-            --helper) SetHelper "$2" ; shift ;;
-            --aur) SetHelper ;;
-            --paru | --yay | --pacman) SetHelper "${1/--/}" ;;
+            --no-keyring)                        keyring=no ;;
+            --no-sync)                           sync=":" ;;
+            --keyrings-reset)                    ResetKeyrings ;;
+            --clear-databases)                   ClearDatabases ;;
+            --min-free-bytes)                    min_free_bytes="$2" ; shift ;;
+            --helper)                            SetHelper "$2" ; shift ;;
+            --aur)                               SetHelper ;;
+            --paru | --yay | --pacman)           SetHelper "${1/--/}" ;;
             --dump-options)
                 lopts="${lopts//:/}"
                 lopts="--${lopts//,/ --}"
@@ -79,9 +87,11 @@ Usage: $progname [options]
 Options:
   --help, -h         This help.
   --nvidia           Check also nvidia driver vs. kernel updates.
-  --no-keyring       Do not try to update keyrings first.
+  --clear-databases  Clears package database files.
+                     Use this only if package database issues constantly make system update fail.
   --keyrings-reset   Resets Arch and EndeavourOS keyrings.
-                     Try this if keyring issues constantly make system update fail.
+                     Use this only if keyring issues constantly make system update fail.
+  --no-keyring       Do not try to update keyrings first.
   --no-sync          Do not run 'sync' after update.
   --helper           AUR helper name. Supported: yay, paru, pacman.
                      Default: pacman
