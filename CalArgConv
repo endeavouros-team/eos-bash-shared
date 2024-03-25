@@ -1,14 +1,8 @@
 #!/bin/bash
-
-# Parameter converter in the installer between calamares and user_commands.bash.
-# Note: eos_script module is used.
+#
+# Parameter converter in the EOS installer between
+# - the eos_script module of calamares
+# - user_commands.bash
 # For Gemini and later.
-
-Main()
-{
-    local script="$1"            # /tmp/user_commands.bash
-    local userarg="$2"           # --user=username
-    bash "$script" "${userarg#*=}"    # skip "--user="
-}
-
-Main "$@"
+#
+ /bin/bash /tmp/user_commands.bash "${1#*=}"        # skip "--user="
