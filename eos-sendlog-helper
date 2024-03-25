@@ -8,13 +8,14 @@ Usage() {
     cat <<EOF >&2
 $progname sends the input (stdin) to a pastebin service.
 
-Usage: $progname [options]
+Usage: $progname [options] command-string
 Options:
    --0x0         Uses 0x0.st
    --dpaste      Uses dpaste.com
    --termbin     Uses termbin.com
    --help, -h    This help
    --expire=*    Specifies the URL expiration time in days.
+   --no-yad      Prevent using yad messages.
 
 Without options the services are tried in order until one succeeds or all fail.
 Trial order: 0x0 dpaste termbin.
@@ -53,23 +54,44 @@ GeneralWarning() {
         [termbin]="termbin.com"
     )
     local txt=""
+    local stop=no
 
     txt+="You are about to send <i>your data</i> to a pastebin service on the internet.\n"
     txt+="Anyone will be able to see the data.\n"
     txt+="Please make sure you are not sending any unwanted information.\n\n"
     txt+="If you want to manage the information you've sent already, please contact <b>${urls[$srv]}</b>.\n"
 
-    local cmd=(
-        eos_yad --form --title="Warning" --text="$txt"
-        --button="yad-quit!!Do not send":1 --button="yad-execute!!Continue sending":3
-    )
+    case "$yad" in
+        yes)
+            local cmd=(
+                eos_yad --form --title="Warning" --text="$txt"
+                --button="yad-quit!!Do not send":1 --button="yad-execute!!Continue sending":3
+            )
 
-    "${cmd[@]}"
+            "${cmd[@]}"
 
-    case "$?" in
-        3) ;; # echo "Sending." >&2 ;;
-        *) echo "Nothing sent." >&2; exit 0 ;;
+            case "$?" in
+                3) ;;
+                *) stop=yes ;;
+            esac
+            ;;
+        no)
+            ReopenStdin
+            echo -e "$txt" | sed -e 's|<.>||' -e 's|</.>||' >&2
+            read -p "Continue sending (Y/n)? " >&2
+            case "$REPLY" in
+                [Nn]*) stop=yes ;;
+            esac
+            ;;
     esac
+    [ $stop = yes ] && { echo2 "Nothing sent."; exit 0; }
+}
+
+ReopenStdin() {
+    if [ $stdin_needs_opening = yes ] ; then
+        stdin_needs_opening=no
+        exec < /dev/tty
+    fi
 }
 
 Main() {
@@ -78,39 +100,50 @@ Main() {
     local -r timeout=10                               # max seconds to wait when sending to pastebin
     local -r curl="/bin/curl --fail -Lsm $timeout"
     local count=0
-    local services=()
-    local testing=no
+    local services=(
+        0x0
+        dpaste
+        termbin
+    )
     local expire=7     # this initial value here will always be overwritten by eos-sendlog
+    local yad=yes
+    local infile=""
+    local commands=""
+    local stdin_needs_opening=no
 
-    while true ; do
+    case "$XDG_SESSION_TYPE" in
+        x11)       [ "$DISPLAY" ]         || yad=no ;;
+        wayland-*) [ "$WAYLAND_DISPLAY" ] || yad=no ;;
+    esac
+
+    while [ "$1" ] ; do
         case "$1" in
-            --testing) testing=yes ;;
-            --0x0 | --dpaste | --termbin)  services+=("${1:2}"); break ;;
+            --0x0 | --dpaste | --termbin)  services=("${1:2}") ;;
             --help | -h)                   Usage 0 ;;
             --expire=*)                    expire="${1#*=}" ;;
+            --no-yad)                      yad=no ;;
+            --infile=*)                    infile="${1#*=}"; break ;;
             -*)                            echo2 "Unsupported option '$1'"; exit 1 ;;
-            *) services=(
-                     0x0
-                     dpaste
-                     termbin
-                 )
-               break
-               ;;
+            *)                             commands="$*"; break ;;
         esac
         shift
     done
 
-    if [ "$testing" = "no" ] ; then
-        local -r input=$(cat)
+    if [ "$infile" ] ; then
+        local -r input="$(cat $infile)"                   # input from a file
+        stdin_needs_opening=yes
+    elif [ "$commands" ] ; then
+        local -r input="$(LANG=C bash -c "$commands")"    # input from commands
     else
-        local -r input="this is a test"
+        local -r input="$(cat)"                           # input from stdin
+        stdin_needs_opening=yes
     fi
     [ "$input" ] || DIE "No input!"
 
     source /usr/share/endeavouros/scripts/eos-script-lib-yad || exit 1
 
     for srv in "${services[@]}" ; do
-        [ "$testing" = "no" ] && GeneralWarning
+        GeneralWarning
         if Tee "$srv" ; then
             cat $log
             return 0

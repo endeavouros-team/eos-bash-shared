@@ -8,18 +8,19 @@ Verbose() { [ $verbose = yes ] && echo -e "$@" >&2 ; }
 Options() {
     local opts
     local sopts="e:hv"
-    local lopts="0x0,dpaste,termbin"    # pastebin options
-    lopts+=",expire:,help,verbose"      # general options
+    local lopts="0x0,dpaste,termbin"       # pastebin options
+    lopts+=",expire:,help,verbose,no-yad"  # general options
 
     opts="$(/bin/getopt -o="$sopts" --longoptions "$lopts" --name "$progname" -- "$@")" || Usage 1
     eval set -- "$opts"
 
     while true ; do
         case "$1" in
-            --0x0 | --dpaste | --termbin)  pastebin_service="$1" ;;
-            -e | --expire)                 expire="$2"; shift ;;
             -h | --help)                   Usage 0 ;;
             -v | --verbose)                verbose=yes ;;
+            --0x0 | --dpaste | --termbin)  helper_options+=("$1") ;;
+            -e | --expire)                 helper_options+=(--expire="$2"); shift ;;
+            --no-yad)                      helper_options+=($1) ;;
             --)                            shift; break ;;
             *)                             break ;;
         esac
@@ -43,6 +44,7 @@ ${progname}-options:
     --verbose, -v   Be more verbose.
     --expire, -e    The URL will expire in X days. Default: $expire_def.
                     Currently supported only for 0x0.st.
+    --no-yad        Prevent using yad messages (useful if display cannot be opened).
 
 Without ${progname}-options the services are tried in order:
     1. 0x0
@@ -59,22 +61,23 @@ EOF
 
 Main() {
     local progname=${0##*/}
-    local pastebin_service=""
     local commands=""
     local verbose=no
     local -r expire_def=7      # days
-    local expire=$expire_def   # days
+    local helper_options=(--expire=$expire_def)
 
     Options "$@"
 
-    expire="--expire=$expire"
-
     if [ "$commands" ] ; then
         Verbose "==> input from commands..."
-        LANG=C bash -c "$commands" | eos-sendlog-helper $pastebin_service $expire
+        eos-sendlog-helper "${helper_options[@]}" "$commands"
     else
         Verbose "==> input from stdin..."
-        eos-sendlog-helper $pastebin_service $expire
+        local -r file=$(mktemp)
+        chmod go-rwx $file
+        cat > $file
+        eos-sendlog-helper "${helper_options[@]}" --infile=$file
+        rm -f $file
     fi
 }
 
