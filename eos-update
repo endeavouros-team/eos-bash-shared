@@ -37,10 +37,21 @@ ClearDatabases() {
     exit 0
 }
 
+OptionCheck() {
+    case "$1" in
+        --nvidia | --nvidia-auto)
+            IsSupportedOS || {
+                WARN "sorry, the nvidia check is implemented only in $OS, option $1 ignored."
+                return 1
+            }
+            ;;
+    esac
+    return 0
+}
 
 Options() {
     local opts
-    local lopts="aur,clear-databases,dump-options,keyrings-reset,nvidia,no-keyring,no-sync,helper:,min-free-bytes:,paru,yay,pacman,help"
+    local lopts="aur,clear-databases,dump-options,keyrings-reset,nvidia,nvidia-auto,no-keyring,no-sync,helper:,min-free-bytes:,paru,yay,pacman,help"
     local sopts="h"
 
     opts="$(/usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
@@ -51,9 +62,11 @@ Options() {
 
     while true ; do
         case "$1" in
-            --nvidia)
-                IsEndeavourOS && nvidia=yes || WARN "sorry, option $1 works only in EndeavourOS. Option ignored."
-                ;;
+            --nvidia)                            OptionCheck "$1" && nvidia=yes ;;
+            --nvidia-auto)                       if OptionCheck "$1" ; then
+                                                     lsmod | grep -w nvidia >/dev/null && nvidia=yes
+                                                 fi
+                                                 ;;
             --no-keyring)                        keyring=no ;;
             --no-sync)                           sync=":" ;;
             --keyrings-reset)                    ResetKeyrings ;;
@@ -87,6 +100,7 @@ Usage: $progname [options]
 Options:
   --help, -h         This help.
   --nvidia           Check also nvidia driver vs. kernel updates.
+  --nvidia-auto      If nvidia module is in use, automatically apply option --nvidia.
   --clear-databases  Clears package database files.
                      Use this only if package database issues constantly make system update fail.
   --keyrings-reset   Resets Arch and EndeavourOS keyrings.
@@ -114,12 +128,14 @@ EOF
     done
 }
 
-IsEndeavourOS() {
-    if [ "$isEndeavourOS" = "yes" ] || [ -r /usr/lib/endeavouros-release ] || [ -n "$(grep -iw endeavouros /etc/*-release)" ] ; then
-        isEndeavourOS=yes
+IsSupportedOS() {
+    [ "$isSupportedOS" = "yes" ] && return 0
+    if [ -r /usr/lib/endeavouros-release ] || [ -n "$(grep -iw endeavouros /etc/*-release)" ] ; then
+        OS=EndeavourOS
+        isSupportedOS=yes
         return 0
     fi
-    isEndeavourOS=no
+    isSupportedOS=no
     return 1
 }
 
@@ -154,12 +170,14 @@ Main() {
     local helper2=":"
     local lock=/var/lib/pacman/db.lck
     local rmopt=f
-    local isEndeavourOS=""
+    local isSupportedOS=""
+    local OS=""
 
     local subopts=()
     local afteropts=()
     local keyring=yes                             # user may disable keyring check with --no-keyring
     local nvidia=no                               # user may enable Nvidia check with --nvidia
+    local nvidia_opt=""
     local sync="sync"
 
     local -r RED=$'\e[0;91m'

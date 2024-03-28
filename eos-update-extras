@@ -12,7 +12,7 @@ Nvidia-check() {
 
     Nvidia-check-needed || return 0
     echo2 ":: Nvidia check..."
-    eos-kernel-nvidia-update-check $updates
+    eos-kernel-nvidia-update-check -v $updates
 }
 
 Parameters() {
