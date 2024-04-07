@@ -85,21 +85,32 @@ Options() {
                 ;;
 
             -h | --help)
-                cat <<EOF >&2
-Package updater for EndeavourOS and Arch
-Handles/updates:
-- keyrings
-- pacman db lock
-- disk space check
-- sync after update (unless disabled by --no-sync)
-and optionally
-- AUR with given AUR helper
-- Nvidia driver vs. kernel updates (only on EndeavourOS)
+                cat <<EOF
+$progname is a package updater for EndeavourOS and Arch.
+
+$progname is implemented as a wrapper around commands pacman and optionally yay/paru.
+Essentially runs commands 'pacman -Syu' and optionally 'yay -Sua' or 'paru -Sua'.
+
+$progname includes (by default) special help in the following situations:
+- A dangling pacman db lock file (/var/lib/pacman/db.lck).
+- Disk space availability for updates (with a configurable minimum space).
+- Keyring package updating before others.
+- Running the 'sync' command after update.
+
+Optional help:
+- Can clear package databases in case of contant problems with them.
+- Can reset keyrings in case of constant problems with them.
+- Updates AUR packages (with option --helper, see Usage below)
+- Ad hoc check for Nvidia GPU driver vs. kernel updates:
+  - kernel-lts updates ==> nvidia-lts should be updated
+  - Nvidia driver:  nvidia  nvidia-lts
+  - Kernel:         linux   linux-lts
+  (only on EndeavourOS).
 
 Usage: $progname [options]
 Options:
   --help, -h         This help.
-  --nvidia           Check also nvidia driver vs. kernel updates.
+  --nvidia           Check also nvidia driver vs. kernel updates. Useful only with the Nvidia GPU.
   --nvidia-auto      If nvidia module is in use, automatically apply option --nvidia.
   --clear-databases  Clears package database files.
                      Use this only if package database issues constantly make system update fail.
@@ -114,10 +125,15 @@ Options:
   --yay              Same as --helper=yay.
   --aur              Uses the AUR helper configured in /etc/eos-script-lib-yad.conf.
   --pacman           Same as --helper=pacman. Default. (Note: pacman does not support AUR directly).
-  --min-free-bytes   Minimal amount of free space (in bytes) that the root partition should have
+  --min-free-bytes   Minimum amount of free space (in bytes) that the root partition should have
                      before updating. Otherwise a warning message will be displayed.
                      Default: $min_free_bytes
-  --dump-options     Shows all supported options. Used for bash command completion.
+
+Tip: create an alias in file ~/.bashrc for eos-update to have the options you need, for example:
+
+     # Enable Nvidia update check, disable sync execution, use paru for AUR updates.
+     alias eos-update='eos-update --nvidia --no-sync --paru'
+
 EOF
                 exit 0
                 ;;
