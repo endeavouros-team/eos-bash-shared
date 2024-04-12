@@ -25,13 +25,16 @@ Exit() {
 Main() {
     local -r progname=${0##*/}
     local verbose=no
+    local color=yes
 
     while [ "$1" ] ; do
         case "$1" in
-            -v | --verbose) verbose=yes; shift ;;
+            -v | --verbose) verbose=yes ;;
+            --no-color) color=no ;;
             -*) DIE "unsupported option '$1'." ;;
             *) break ;;
         esac
+        shift
     done
 
     local msgs=()
@@ -63,14 +66,21 @@ Main() {
         ll=${LINUX[$ix]}
         nn=${NVIDIA[$ix]}
         case "$(printf "%s\n" "${pkgs[@]}" | grep -P "^$ll$|^$nn$")" in
-            "$ll") msgs+=("warning: $ll would be upgraded, $nn not!") ;;
+            "$ll")
+                expac %n $nn >/dev/null && msgs+=("warning: $ll would be upgraded, $nn not!")
+                ;;
             # "$nn") msgs+=("warning: $nn would be upgraded, $ll not!") ;;
         esac
     done
 
     if [ ${#msgs[@]} -gt 0 ] ; then
-        local -r RED=$'\e[0;91m'
-        local -r RESET=$'\e[0m'
+        if [ "$color" = "yes" ] ; then
+            local -r RED=$'\e[0;91m'
+            local -r RESET=$'\e[0m'
+        else
+            local -r RED=""
+            local -r RESET=""
+        fi
         local msg
         for msg in "${msgs[@]}" ; do
             echo "${RED}==> $progname: $msg${RESET}" >&2
