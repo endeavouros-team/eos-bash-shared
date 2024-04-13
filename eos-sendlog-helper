@@ -111,10 +111,16 @@ Main() {
     local commands=""
     local stdin_needs_opening=no
 
-    case "$XDG_SESSION_TYPE" in
-        x11)       [ "$DISPLAY" ]         || yad=no ;;
-        wayland-*) [ "$WAYLAND_DISPLAY" ] || yad=no ;;
-    esac
+    source /usr/share/endeavouros/scripts/eos-script-lib-yad || exit 1
+
+    if [ "$EUID" = "0" ] && eos_is_in_chroot ; then
+        yad=no
+    else
+        case "$XDG_SESSION_TYPE" in
+            x11)       [ "$DISPLAY" ]         || yad=no ;;
+            wayland-*) [ "$WAYLAND_DISPLAY" ] || yad=no ;;
+        esac
+    fi
 
     while [ "$1" ] ; do
         case "$1" in
@@ -139,8 +145,6 @@ Main() {
         stdin_needs_opening=yes
     fi
     [ "$input" ] || DIE "No input!"
-
-    source /usr/share/endeavouros/scripts/eos-script-lib-yad || exit 1
 
     for srv in "${services[@]}" ; do
         GeneralWarning
