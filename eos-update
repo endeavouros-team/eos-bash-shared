@@ -52,6 +52,7 @@ OptionCheck() {
 Options() {
     local opts
     local lopts="aur,clear-databases,dump-options,keyrings-reset,nvidia,nvidia-auto,no-keyring,no-sync,helper:,min-free-bytes:,paru,yay,pacman,help"
+    lopts+=",show-only-fixed,show-upstream-news"
     local sopts="h"
 
     opts="$(/usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
@@ -75,6 +76,15 @@ Options() {
             --helper)                            SetHelper "$2" ; shift ;;
             --aur)                               SetHelper ;;
             --paru | --yay | --pacman)           SetHelper "${1/--/}" ;;
+            --show-only-fixed)
+                which arch-audit >/dev/null && arch-audit -u
+                exit
+                ;;
+            --show-upstream-news)
+                local br=$(eos_select_browser)
+                [ "$br" ] && $br https://archlinux.org/news
+                exit
+                ;;
             --dump-options)
                 lopts="${lopts//:/}"
                 lopts="--${lopts//,/ --}"
@@ -100,34 +110,32 @@ $progname includes (by default) special help in the following situations:
 Optional help:
 - Can clear package databases in case of contant problems with them.
 - Can reset keyrings in case of constant problems with them.
-- Updates AUR packages (with option --helper, see Usage below)
-- Ad hoc check for Nvidia GPU driver vs. kernel updates:
-  - kernel-lts updates ==> nvidia-lts should be updated
-  - Nvidia driver:  nvidia  nvidia-lts
-  - Kernel:         linux   linux-lts
-  (only on EndeavourOS).
+- Updates AUR packages (with option --helper, see Usage below).
+- Ad hoc check (only on EndeavourOS) for Nvidia GPU driver vs. kernel updates (non-dkms only).
 
 Usage: $progname [options]
 Options:
-  --help, -h         This help.
-  --nvidia           Check also nvidia driver vs. kernel updates. Useful only with the Nvidia GPU.
-  --nvidia-auto      If nvidia module is in use, automatically apply option --nvidia.
-  --clear-databases  Clears package database files.
-                     Use this only if package database issues constantly make system update fail.
-  --keyrings-reset   Resets Arch and EndeavourOS keyrings.
-                     Use this only if keyring issues constantly make system update fail.
-  --no-keyring       Do not try to update keyrings first.
-  --no-sync          Do not run 'sync' after update.
-  --helper           AUR helper name. Supported: yay, paru, pacman.
-                     Default: pacman
-                     Other AUR helpers supporting option -Sua like yay should work as well.
-  --paru             Same as --helper=paru.
-  --yay              Same as --helper=yay.
-  --aur              Uses the AUR helper configured in /etc/eos-script-lib-yad.conf.
-  --pacman           Same as --helper=pacman. Default. (Note: pacman does not support AUR directly).
-  --min-free-bytes   Minimum amount of free space (in bytes) that the root partition should have
-                     before updating. Otherwise a warning message will be displayed.
-                     Default: $min_free_bytes
+  --help, -h            This help.
+  --nvidia              Check also nvidia driver vs. kernel updates. Useful only with the Nvidia GPU.
+  --nvidia-auto         If nvidia module is in use, automatically apply option --nvidia.
+  --clear-databases     Clears package database files.
+                        Use this only if package database issues constantly make system update fail.
+  --keyrings-reset      Resets Arch and EndeavourOS keyrings.
+                        Use this only if keyring issues constantly make system update fail.
+  --no-keyring          Do not try to update keyrings first.
+  --no-sync             Do not run 'sync' after update.
+  --show-only-fixed     Show only packages that have already been fixed (runs: arch-audit -u) and exit.
+  --show-upstream-news  Show the news page of the upstream site and exit.
+  --helper              AUR helper name. Supported: yay, paru, pacman.
+                        Default: pacman
+                        Other AUR helpers supporting option -Sua like yay should work as well.
+  --paru                Same as --helper=paru.
+  --yay                 Same as --helper=yay.
+  --aur                 Uses the AUR helper configured in /etc/eos-script-lib-yad.conf.
+  --pacman              Same as --helper=pacman. Default. (Note: pacman does not support AUR directly).
+  --min-free-bytes      Minimum amount of free space (in bytes) that the root partition should have
+                        before updating. Otherwise a warning message will be displayed.
+                        Default: $min_free_bytes
 
 Tip: create an alias in file ~/.bashrc for eos-update to have the options you need, for example:
 
