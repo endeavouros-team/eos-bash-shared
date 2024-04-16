@@ -15,7 +15,8 @@ DoNotify() {
     local logfile=/var/log/reboot-recommendation-trigger.log
     echo "[$(/bin/date "+%x %X")] Reboot recommendation triggered by updating package: $target" > $logfile
     chmod o-rwx $logfile
-    systemctl enable --now eos-reboot-required.timer
+    systemctl enable --now eos-reboot-required.timer 2>/dev/null
+    sleep 1
     exit 0
 }
 

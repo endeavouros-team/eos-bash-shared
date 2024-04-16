@@ -18,10 +18,9 @@ DoNotify() {
 Wait-for-some-processes() {
     # Wait for all pacman-like processes to finish.
 
-    systemctl stop eos-reboot-required.timer
+    systemctl disable --now eos-reboot-required.timer
     sleep 1
     source /usr/share/endeavouros/scripts/eos-script-lib-yad --limit-icons || return
-    # grep's --count option used for ruling out the grep line itself.
     while ps -C pacman,yay,paru,makepkg >/dev/null ; do
         sleep 1
     done
