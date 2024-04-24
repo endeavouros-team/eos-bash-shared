@@ -7,14 +7,6 @@
 echo2() { echo "$@" >&2 ; }
 WARN()  { echo2 "==> $progname: warning: $1" ; }
 
-Nvidia-check() {
-    Nvidia-check-needed() { expac -Q %n nvidia nvidia-lts > /dev/null ; }
-
-    Nvidia-check-needed || return 0
-    echo2 ":: Nvidia check..."
-    eos-kernel-nvidia-update-check -v $updates
-}
-
 Parameters() {
     local arg
     local update_first=()   # these will be updated before others
@@ -23,7 +15,7 @@ Parameters() {
         arg="$1"
         case "$arg" in
             --nvidia)
-                Nvidia-check || WARN "'Nvidia & kernel' check failed."
+                eos-kernel-nvidia-update-check $updates || WARN "'Nvidia & kernel' check failed."
                 ;;
             --keyrings | --keyring)
                 for arg in archlinux-keyring endeavouros-keyring ; do

@@ -1,93 +1,69 @@
 #!/bin/bash
 
-# On Nvidia GPU machines, kernel and nvidia driver must update together:
-# - if linux-lts is updated, nvidia-lts should be updated too
-# - if linux     is updated, nvidia     should be updated too
-# Note that if an nvidia*dkms driver is installed, we have nothing to check.
+# On Nvidia GPU machines, the non-dkms Nvidia drivers need to be updated
+# *in sync* with the corresponding kernel:
+#   - if linux-lts is updated and nvidia-lts is installed, nvidia-lts should be updated too
+#   - if linux     is updated and nvidia     is installed, nvidia     should be updated too
 #
 # This app checks the above and informs the calling app with exit code:
-#     0=success
-#     1=failure
-# On failure also error messages to stderr will be displayed.
+#     0 = success, no issue detected
+#     1 = failure, update is missing
+#     2 = usage error
+# On failure also the appopriate error messages will be displayed to stderr.
 
-DIE() {
-    echo "$progname: error: $1" >&2
-    exit 1
+DIE() { echo "==> $progname: error: $1" >&2; exit 2; }
+
+ExitOK()   { [ $verbose = yes ] && echo "==> no Nvidia driver update issue detected. " >&2; exit 0; }
+ExitFail() { exit 1; }
+
+UpdatesInclude() { echo "$updates" | grep "^$1$" >/dev/null ; }
+IsInstalled()    { expac -Q %n "$1" >/dev/null ; }
+DriverCheck()    {
+    if UpdatesInclude "$1" && IsInstalled "$2" && ! UpdatesInclude "$2" ; then
+        msgs+=("updates include $1 but not $2")
+    fi
 }
 
-Exit() {
-    case "$1" in
-        0) [ $verbose = yes ] && echo "==> no Nvidia driver update issue detected. " >&2 ;;
-    esac
-    exit "$1"
+Parameters() {
+    while true ; do
+        case "$1" in
+            -v | --verbose) verbose=yes ;;
+            --no-color)     RED=""; RESET="" ;;
+            -*)             DIE "unsupported option '$1'" ;;
+            *)              if [ "$1" ] ; then
+                                updates="$(printf "%s\n" "$@")"                  # from parameters
+                            else
+                                updates="$(checkupdates | awk '{print $1}')"     # from a command
+                            fi
+                            return
+                            ;;
+        esac
+        shift
+    done
 }
 
 Main() {
     local -r progname=${0##*/}
+    local RED=$'\e[0;91m'
+    local RESET=$'\e[0m'
     local verbose=no
-    local color=yes
-
-    while [ "$1" ] ; do
-        case "$1" in
-            -v | --verbose) verbose=yes ;;
-            --no-color) color=no ;;
-            -*) DIE "unsupported option '$1'." ;;
-            *) break ;;
-        esac
-        shift
-    done
-
+    local updates=""             # will contain all updates, separated by newline; see Parameters()
     local msgs=()
-    local pkgs=()
 
-    PATH=/usr/bin:$PATH
+    expac %n nvidia nvidia-lts >/dev/null || exit 0     # nothing to do
+    echo ":: Nvidia check..." >&2
 
-    # Quick check is Nvidia modules are in use.
-    lsmod | grep nvidia >/dev/null || Exit 0
+    Parameters "$@"
 
-    # If any of these nvidia dkms versions are installed, we have nothing to do.
-    expac -Q %n nvidia-dkms nvidia-470xx-dkms nvidia-390xx-dkms >/dev/null && Exit 0
+    DriverCheck linux     nvidia
+    DriverCheck linux-lts nvidia-lts
 
-    # Get list of packages to be updated from parameters or otherwise.
-    if [ "$1" ] ; then
-        pkgs=("$@")
+    if [ ${#msgs[@]} -eq 0 ] ; then
+        ExitOK
     else
-        readarray -t pkgs <<< $(checkupdates | awk '{print $1}')
+        echo "${RED}==> $progname: warning: $(printf "%s\n" "${msgs[@]}")${RESET}" >&2
+        ExitFail
     fi
-
-    # Find and show potential problems with Nvidia related updates.
-
-    local NVIDIA=( nvidia nvidia-lts )
-    local LINUX=(  linux  linux-lts  )
-    local ix count=${#LINUX[@]}
-    local ll nn
-
-    for ((ix=0; ix < count; ix++)) ; do
-        ll=${LINUX[$ix]}
-        nn=${NVIDIA[$ix]}
-        case "$(printf "%s\n" "${pkgs[@]}" | grep -P "^$ll$|^$nn$")" in
-            "$ll")
-                expac %n $nn >/dev/null && msgs+=("warning: $ll would be upgraded, $nn not!")
-                ;;
-            # "$nn") msgs+=("warning: $nn would be upgraded, $ll not!") ;;
-        esac
-    done
-
-    if [ ${#msgs[@]} -gt 0 ] ; then
-        if [ "$color" = "yes" ] ; then
-            local -r RED=$'\e[0;91m'
-            local -r RESET=$'\e[0m'
-        else
-            local -r RED=""
-            local -r RESET=""
-        fi
-        local msg
-        for msg in "${msgs[@]}" ; do
-            echo "${RED}==> $progname: $msg${RESET}" >&2
-        done
-        exit 1
-    fi
-    Exit 0
 }
 
 Main "$@"
