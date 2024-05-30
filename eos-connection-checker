@@ -30,6 +30,7 @@ Main() {
     local URL
     local retval=201
     local verbose=no
+    local fallback="https://forum.endeavouros.com/faq"  # fallback if no mirrors in $ml
 
     case "$1" in
         -v | --verbose) verbose=yes ;;   # will show the responding mirror URL
@@ -44,9 +45,8 @@ Main() {
             others="$(AllMirrors)"
         fi
     fi
-    [ "$others" ] || others="https://forum.endeavouros.com/faq"  # fallback if no mirrors
 
-    for URL in $others ; do
+    for URL in $others $fallback ; do
         Test "$URL"
     done
     return $retval                       # no connection
