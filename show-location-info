@@ -8,9 +8,18 @@ DIE() {
     exit 0
 }
 
+DumpOptions() {
+    local tmp="--${lopts//,/ --}"
+    tmp="${tmp//:/}"
+    echo "$tmp"
+}
+DumpItems() {
+    echo "${items[*]}"
+}
+
 Options() {
     local opts
-    local lopts="help,timeout:,tolower,url:"
+    local lopts="help,timeout:,tolower,url:,dump-all"
     local sopts="ht:lu:"
 
     opts="$(/usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
@@ -22,6 +31,10 @@ Options() {
 
     while true ; do
         case "$1" in
+            #--dump-options) DumpOptions; exit 0 ;;
+            #--dump-items)   DumpItems; exit 0 ;;
+            --dump-all)       DumpItems; DumpOptions; exit 0 ;;
+
             -t | --timeout)   timeout="$2" ; shift ;;
             -l | --tolower)   tolower=yes ;;
             -u | --url)       infourl="$2" ; shift ;;
@@ -73,17 +86,17 @@ Main() {
         https://ipinfo.io
         https://ipapi.co
     )
+    local infourl=""    # info source
+    local url
 
     # supported values
     local items=(city country hostname ip loc org postal region timezone "")   # "" means: all
 
+    Options "$@"
+
     source /etc/eos-script-lib-yad.conf || return 1
 
-    # info source
-    local infourl="$EOS_LOCATION_PROVIDER_URL"
-    local url
-
-    Options "$@"
+    [ "$infourl" ] || infourl="$EOS_LOCATION_PROVIDER_URL"
 
     if [ -n "$infourl" ] ; then
         # add the given url as first in list

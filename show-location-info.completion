@@ -1,0 +1,16 @@
+# bash completion for show-location-info        -*- shell-script -*-
+
+_show-location-info_complete() {
+    COMPREPLY=( $(compgen -W "$1" -- "$cur") )
+    [[ $COMPREPLY == *= ]] && compopt -o nospace
+    compopt -o nosort
+}
+
+_show-location-info_() 
+{
+    local cur prev #words cword split
+    _init_completion -s || return
+
+    _show-location-info_complete "$(show-location-info --dump-all)"
+}
+complete -F _show-location-info_    show-location-info
