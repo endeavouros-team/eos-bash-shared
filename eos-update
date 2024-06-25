@@ -21,6 +21,66 @@ Cmd() {                           # Show a command, run it, and exit on issues.
     "$@" || DIE "'$*' failed."
 }
 
+CheckYourEndeavourosMirrorlist() {
+    local -r mirrors=(
+        https://mirror.alpix.eu/endeavouros/repo/endeavouros/x86_64     # Germany
+        https://mirror.moson.org/endeavouros/repo/endeavouros/x86_64    # Germany
+        https://mirrors.gigenet.com/endeavouros/repo/endeavouros/x86_64 # United States
+    )
+    local url data
+    local -r tmpfile=/tmp/eos-ml.p
+    local -r eml=/etc/pacman.d/endeavouros-mirrorlist
+    local good_mirrors local_mirrors
+    local lm
+    local unsupported=() supported=()
+
+    # local continent=""
+    # [ -x /bin/location ] && continent="$(/bin/location list-countries --show-continent | awk '{print $2}')"
+    # case "$continent" in
+    #     NA) mirrors=("${mirrors_NA[@]}" "${mirrors_EU[@]}") ;;
+    #     *)  mirrors=("${mirrors_EU[@]}" "${mirrors_NA[@]}") ;;
+    # esac
+
+    for url in "${mirrors[@]}" ; do
+        data=$(curl -Lsm 30 -o- $url)
+        if [ $? -eq 0 ] && [ "$data" ] ; then
+            data=$(echo "$data" | grep "endeavouros-mirrorlist.*\.sig")   # the line that contains the pkg file name
+            data=${data#*\"}                                              # skip prefix
+            data=${data%%\.sig*}                                          # skip suffix
+            if [ "$data" ] ; then
+                unsupported=()
+                supported=()
+
+                url+="/$data"
+                curl -Lsm 30 -o$tmpfile $url
+
+                good_mirrors=$(tar xvf $tmpfile etc/pacman.d/endeavouros-mirrorlist -O 2>/dev/null | grep "^Server = " | sed 's|^Server = ||')
+                local_mirrors=$(grep "^[ \t]*Server[ \t]*=[ \t]*" $eml | sed 's|^Server = ||')
+
+                for lm in $local_mirrors ; do
+                    if [ "$(echo "$good_mirrors" | grep "$lm")" ] ; then
+                        supported+=($lm)
+                    else
+                        unsupported+=($lm)
+                    fi
+                done
+                if [ ${#unsupported[@]} -eq 0 ] && [ ${#supported[@]} -gt 0 ] ; then
+                    echo2 "==> Info: file $eml contains ${#supported[@]} supported mirrors."
+                elif [ ${#unsupported[@]} -ne 0 ] ; then
+                    echo2 -e "==> Error: file $eml contains ${#unsupported[@]} unsupported mirror definitions:"
+                    printf "%s\n" "${unsupported[@]}" | sed 's|^|    -> |'
+                elif [ ${#supported[@]} -eq 0 ] ; then
+                    echo2 -e "==> Error: file $eml does not contain supported mirror definitions."
+                fi
+                rm -f $tmpfile
+                return
+            fi
+            
+        fi
+    done
+    [ "$data" ] || DIE "sorry, cannot fetch the latest EndeavourOS mirrorlist data"
+}
+
 ResetKeyrings() {
     Cmd sudo mv /etc/pacman.d/gnupg /root/pacman-key.bak.$(date +%Y%m%d-%H%M).by.$progname
     Cmd sudo pacman-key --init
@@ -47,7 +107,7 @@ OptionCheck() {
 Options() {
     local opts
     local lopts="aur,clear-databases,dump-options,keyrings-reset,nvidia,nvidia-auto,no-keyring,no-sync,helper:,min-free-bytes:,paru,yay,pacman,help"
-    lopts+=",show-only-fixed,show-upstream-news"
+    lopts+=",show-only-fixed,show-upstream-news,check-mirrors-eos"
     local sopts="h"
 
     opts="$(/usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
@@ -58,6 +118,7 @@ Options() {
 
     while true ; do
         case "$1" in
+            --check-mirrors-eos)                 CheckYourEndeavourosMirrorlist; exit ;;
             --nvidia)                            OptionCheck "$1" && nvidia=yes ;;
             --no-keyring)                        keyring=no ;;
             --no-sync)                           sync=":" ;;
@@ -107,6 +168,7 @@ Optional help:
 Usage: $progname [options]
 Options:
   --help, -h            This help.
+  --check-mirrors-eos   Check file /etc/pacman.d/endeavouros-mirrorlist for unsupported mirrors.
   --nvidia              Check also nvidia driver vs. kernel updates. Useful only with the Nvidia GPU.
   --clear-databases     Clears package database files.
                         Use this only if package database issues constantly make system update fail.
