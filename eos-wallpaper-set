@@ -275,6 +275,11 @@ Parameters() {
                 eos_yad_infomsg "$(Usage)"
                 exit 0
                 ;;
+            --history)
+                local wp=$(grep ^[0-9] "$history_of_backgrounds" | awk '{print $NF}' | sort -u | fzf)
+                [ "$wp" ] && Main "$wp"
+                exit 0
+                ;;
             -*)
                 msg="$(printf "\n%s\n\n" "Unsupported option '$arg'." ; Usage)"
                 DIE "$msg"
@@ -292,8 +297,11 @@ Parameters() {
 
 Usage() {
     cat <<EOF
-Usage: <b>$progname</b> [wallpaper-file | folder]
-where
+Usage: <b>$progname</b> [options] [wallpaper-file | folder]
+Options:
+    -h, --help           This help.
+    --history            Select wallpaper from previously set wallpapers.
+Parameters:
     <i>wallpaper-file</i>
         Wallpaper file name, 'DEFAULT', or 'ISO':
         - absolute or relative path, with or without leading 'file://'.
