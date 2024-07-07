@@ -22,7 +22,7 @@ Cmd() {                           # Show a command, run it, and exit on issues.
 }
 
 CheckYourEndeavourosMirrorlist() {
-    local -r mirrors=(
+    local -r mirrors=(  # for downloading the latest endeavouros-mirrorlist package
         https://mirror.alpix.eu/endeavouros/repo/endeavouros/x86_64     # Germany
         https://mirror.moson.org/endeavouros/repo/endeavouros/x86_64    # Germany
         https://mirrors.gigenet.com/endeavouros/repo/endeavouros/x86_64 # United States
@@ -64,13 +64,14 @@ CheckYourEndeavourosMirrorlist() {
                         unsupported+=($lm)
                     fi
                 done
-                if [ ${#unsupported[@]} -eq 0 ] && [ ${#supported[@]} -gt 0 ] ; then
-                    echo2 "==> Info: file $eml contains ${#supported[@]} supported mirrors."
-                elif [ ${#unsupported[@]} -ne 0 ] ; then
-                    echo2 -e "==> Error: file $eml contains ${#unsupported[@]} unsupported mirror definitions:"
-                    printf "%s\n" "${unsupported[@]}" | sed 's|^|    -> |'
-                elif [ ${#supported[@]} -eq 0 ] ; then
-                    echo2 -e "==> Error: file $eml does not contain supported mirror definitions."
+                echo2   "Statistics from file $eml:"
+                echo2   "* contains ${#supported[@]} known mirror definitions."
+                printf2 "* contains ${#unsupported[@]} unknown mirror definitions"
+                if [ ${#unsupported[@]} -eq 0 ] ; then
+                    echo2 "."
+                else
+                    echo2 ":"
+                    printf "%s\n" "${unsupported[@]}" | sed 's|^|    Server = |'
                 fi
                 rm -f $tmpfile
                 return
