@@ -1,16 +1,19 @@
 #!/bin/bash
 
 DoNotify() {
-    local cmd=(
-        eos_notification_all       # function to notify all users
+    local -r msg="Reboot is recommended due to the upgrade of core system package(s)."
+    local icon=/usr/share/icons/Qogir/scalable/apps/system-reboot.svg
+    [ -e $icon ] || icon=system-reboot
 
-        system-reboot              # icon
-        critical                   # urgency
-        0                          # expire time (not used!)
-        eos-reboot-required2       # appname
-        "Reboot recommended!"      # title:
-        "Reboot is recommended due to the upgrade of core system package(s)."        # message:
-        RED                        # message color
+    local cmd=(
+        eos_notification_all           # function to notify all users
+        $icon                          # icon
+        critical                       # urgency
+        0                              # expire time (not used!)
+        "'EndeavourOS notification'"   # appname
+        "Reboot recommended!"          # title
+        "$msg"                         # message
+        RED                            # message color on TTY
     )
     "${cmd[@]}"
 }
