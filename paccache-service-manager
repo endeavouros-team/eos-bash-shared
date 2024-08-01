@@ -88,6 +88,7 @@ AddCommand() {
 _paccache_cleaner_manager()
 {
     local progname=paccache-service-manager
+    eos-assert-deps $progname yad || return 1
     local dir=/etc/systemd/system
     local dir2=/usr/lib/systemd/system         # current values may be only here...
     local service=$dir/paccache.service

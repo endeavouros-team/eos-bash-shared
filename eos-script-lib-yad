@@ -31,14 +31,62 @@ source /etc/eos-script-lib-yad.conf      # for EOS_ROOTER and other configs
 export EOS_WICON=/usr/share/endeavouros/EndeavourOS-icon.png
 export EOS_YAD_STARTER_CMD="/usr/bin/yad --window-icon=$EOS_WICON"
 
-eos_yad() {
-    GDK_BACKEND=x11 $EOS_YAD_STARTER_CMD "$@"
+eos_yad_orig() { GDK_BACKEND=x11 $EOS_YAD_STARTER_CMD "$@"; }
+eos_yad_chk() {          # eos_yad() with a check that the required 'yad' package is installed
+    if [ -x /usr/bin/yad ] ; then
+        eos_yad_orig "$@"
+    else
+        echo "${BASH_SOURCE[1]##*/}: error: this app requires package 'yad'" >&2
+        exit 1
+    fi
 }
+
+case "$EOS_USE_TEST_FOR_YAD" in
+    yes) eos_yad() { eos_yad_chk "$@" ; } ;;
+    *)   eos_yad() { eos_yad_orig "$@" ; } ;;
+esac
 
 translations_dir=/usr/share/endeavouros/scripts  # needed in translations.bash
 source $translations_dir/translations.bash || {
     echo "$translations_dir/translations.bash not found!" >&2
     exit 1
+}
+
+yad_missing_check() {
+    if [ "${EOS_YAD_MISSING_NOTIFICATION^^}" = "YES" ] ; then
+        if ! which yad &>/dev/null ; then
+            local app="$1"
+            local timeout="$2"
+            [ "$timeout" ] || timeout=10000
+            local msg="Some operations require yad installed."
+            eos_notification "$ICO_INFO" normal $timeout "$app" "Notification from $app" "$msg"
+        fi
+    fi
+}
+
+eos-assert-deps() {      # params: prog deps
+    local -r prog="$1"
+    shift
+    local failcount=0
+    local dep
+    for dep in "$@" ; do
+        which "$dep" &>/dev/null || {
+           echo "==> $prog requires package '$dep'" >&2
+           ((failcount++))
+        }
+    done
+    return $failcount
+}
+
+eos-assert-deps-fast() {      # params: prog deps
+    local -r prog="$1"
+    shift
+    local failcount=0
+    which "$@" &>/dev/null || {
+        failcount=$?
+        echo "==> $prog: missing $failcount of packages: $*"
+    }
+    return $failcount
 }
 
 eos_icon_path() {

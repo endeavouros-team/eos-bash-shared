@@ -39,6 +39,7 @@ Main()
         x86_64) ;;
         *) DIE "This program is supported only on x86_64 machines." ;;   # because of mirrors...
     esac
+    eos-assert-deps $progname yad || return 1
     local date=$(/usr/bin/date +%Y%m%d-%H%M)        # for temporary backup file
     local stopdate="$(/usr/bin/date +%Y/%m/%d)"     # for checking if user selected this date
     local mlist=/etc/pacman.d/mirrorlist

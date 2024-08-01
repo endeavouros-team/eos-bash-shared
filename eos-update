@@ -21,7 +21,52 @@ Cmd() {                           # Show a command, run it, and exit on issues.
     "$@" || DIE "'$*' failed."
 }
 
+MirrorCheckResult() {
+    local ml="$1"
+    local ret=0
+
+    echo2 "==> $ml contains:"
+    echo2 "    known mirrors: ${#supported[@]}"
+    if [ ${#unsupported[@]} -eq 0 ] ; then
+        echo2 "    unknown mirrors: 0"
+    else
+        echo2 "    unknown or offline mirrors: ${#unsupported[@]}"
+        printf "%s\n" "${unsupported[@]}" | sed 's|^|      Server = |'
+    fi
+    [ ${#unsupported[@]} -eq 0 ] && [ ${#supported[@]} -gt 0 ]     # create the return code, 0=success, 1=fail
+}
+
+Hardware-x86_64() { [ $(eos_GetArch) = x86_64 ] || DIE "sorry, this implementation supports only x86_64 environment"; }
+
+CheckYourArchMirrorlist() {
+    Hardware-x86_64
+    local url="https://archlinux.org/mirrorlist/?use_mirror_status=on"
+    local lm
+    local all_working_mirrors
+    local local_mirrors
+    local supported=()
+    local unsupported=()
+
+    # get working mirrors from the Arch mirrorlist page
+    all_working_mirrors=$(curl --fail -Lsm 30 "$url") || DIE "failed to fetch available mirrors (curl code $?)"
+    [ "$all_working_mirrors" ] || DIE "-> archlinux.org/mirrorlist failed"
+    readarray -t all_working_mirrors <<< $(echo "$all_working_mirrors" | tail -n +7 | grep "^#Server = " | awk '{print $NF}')
+
+    # get mirrors from local mirrorlist
+    readarray -t local_mirrors <<< $(grep "^[ \t]*Server[ \t]*=[ \t]*" $aml | awk '{print $NF}')
+
+    for lm in "${local_mirrors[@]}" ; do
+        if printf "%s\n" "${all_working_mirrors[@]}" | grep "$lm" >/dev/null ; then
+            supported+=("$lm")
+        else
+            unsupported+=("$lm")
+        fi
+    done
+    MirrorCheckResult $aml
+}
+
 CheckYourEndeavourosMirrorlist() {
+    Hardware-x86_64
     local -r mirrors=(  # for downloading the latest endeavouros-mirrorlist package
         https://mirror.alpix.eu/endeavouros/repo/endeavouros/x86_64     # Germany
         https://mirror.moson.org/endeavouros/repo/endeavouros/x86_64    # Germany
@@ -29,7 +74,6 @@ CheckYourEndeavourosMirrorlist() {
     )
     local url data
     local -r tmpfile=/tmp/eos-ml.p
-    local -r eml=/etc/pacman.d/endeavouros-mirrorlist
     local good_mirrors local_mirrors
     local lm
     local unsupported=() supported=()
@@ -54,7 +98,8 @@ CheckYourEndeavourosMirrorlist() {
                 url+="/$data"
                 curl -Lsm 30 -o$tmpfile $url
 
-                good_mirrors=$(tar xvf $tmpfile etc/pacman.d/endeavouros-mirrorlist -O 2>/dev/null | grep "^Server = " | sed 's|^Server = ||')
+                good_mirrors=$(tar xvf $tmpfile ${eml:1} -O 2>/dev/null | grep "^Server = " | sed 's|^Server = ||')
+                rm -f $tmpfile
                 local_mirrors=$(grep "^[ \t]*Server[ \t]*=[ \t]*" $eml | sed 's|^Server = ||')
 
                 for lm in $local_mirrors ; do
@@ -64,16 +109,7 @@ CheckYourEndeavourosMirrorlist() {
                         unsupported+=($lm)
                     fi
                 done
-                echo2   "Statistics from file $eml:"
-                echo2   "* contains ${#supported[@]} known mirror definitions."
-                printf2 "* contains ${#unsupported[@]} unknown mirror definitions"
-                if [ ${#unsupported[@]} -eq 0 ] ; then
-                    echo2 "."
-                else
-                    echo2 ":"
-                    printf "%s\n" "${unsupported[@]}" | sed 's|^|    Server = |'
-                fi
-                rm -f $tmpfile
+                MirrorCheckResult $eml
                 return
             fi
             
@@ -108,7 +144,7 @@ OptionCheck() {
 Options() {
     local opts
     local lopts="aur,clear-databases,dump-options,keyrings-reset,nvidia,nvidia-auto,no-keyring,no-sync,helper:,min-free-bytes:,paru,yay,pacman,help"
-    lopts+=",show-only-fixed,show-upstream-news,check-mirrors-eos"
+    lopts+=",show-only-fixed,show-upstream-news,check-mirrors-arch,check-mirrors-eos,check-mirrors"
     local sopts="h"
 
     opts="$(/usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
@@ -117,9 +153,19 @@ Options() {
     }
     eval set -- "$opts"
 
+    local ret=0
     while true ; do
         case "$1" in
-            --check-mirrors-eos)                 CheckYourEndeavourosMirrorlist; exit ;;
+            --check-mirrors)                     CheckYourEndeavourosMirrorlist || ((ret++))
+                                                 CheckYourArchMirrorlist        || ((ret++))
+                                                 exit $ret
+                                                 ;;
+            --check-mirrors-arch)                CheckYourArchMirrorlist || ((ret++))
+                                                 exit $ret
+                                                 ;;
+            --check-mirrors-eos)                 CheckYourEndeavourosMirrorlist || ((ret++))
+                                                 exit $ret
+                                                 ;;
             --nvidia)                            OptionCheck "$1" && nvidia=yes ;;
             --no-keyring)                        keyring=no ;;
             --no-sync)                           sync=":" ;;
@@ -157,38 +203,44 @@ Essentially runs commands 'pacman -Syu' and optionally 'yay -Sua' or 'paru -Sua'
 $progname includes (by default) special help in the following situations:
 - A dangling pacman db lock file (/var/lib/pacman/db.lck).
 - Disk space availability for updates (with a configurable minimum space).
-- Keyring package updating before others.
+- Keyring package updating before updating other packages.
 - Running the 'sync' command after update.
 
 Optional help:
 - Can clear package databases in case of contant problems with them.
 - Can reset keyrings in case of constant problems with them.
+- Can check the validity of the locally configured lists of mirrors.
 - Updates AUR packages (with option --helper, see Usage below).
 - Ad hoc check for Nvidia GPU driver vs. kernel updates (non-dkms only).
 
 Usage: $progname [options]
 Options:
-  --help, -h            This help.
-  --check-mirrors-eos   Check file /etc/pacman.d/endeavouros-mirrorlist for unsupported mirrors.
-  --nvidia              Check also nvidia driver vs. kernel updates. Useful only with the Nvidia GPU.
-  --clear-databases     Clears package database files.
-                        Use this only if package database issues constantly make system update fail.
-  --keyrings-reset      Resets Arch and EndeavourOS keyrings.
-                        Use this only if keyring issues constantly make system update fail.
-  --no-keyring          Do not try to update keyrings first.
-  --no-sync             Do not run 'sync' after update.
-  --show-only-fixed     Show only packages that have already been fixed (runs: arch-audit -u) and exit.
-  --show-upstream-news  Show the news page of the upstream site and exit.
-  --helper              AUR helper name. Supported: yay, paru, pacman.
-                        Default: pacman
-                        Other AUR helpers supporting option -Sua like yay should work as well.
-  --paru                Same as --helper=paru.
-  --yay                 Same as --helper=yay.
-  --aur                 Uses the AUR helper configured in /etc/eos-script-lib-yad.conf.
-  --pacman              Same as --helper=pacman. Default. (Note: pacman does not support AUR directly).
-  --min-free-bytes      Minimum amount of free space (in bytes) that the root partition should have
-                        before updating. Otherwise a warning message will be displayed.
-                        Default: $min_free_bytes
+  --help, -h              This help.
+  --check-mirrors         Check files $eml and $aml
+                          for unsupported mirrors.
+                          This may be useful when one or more mirrors start failing unexpectedly.
+                          Note: only x86_64 hardware is supported.
+  --check-mirrors-eos     Check files $eml for unsupported mirrors.
+  --check-mirrors-arch    Check files $aml for unsupported mirrors.
+  --nvidia                Check also nvidia driver vs. kernel updates. Useful only with the Nvidia GPU.
+  --clear-databases       Clears package database files.
+                          Use this only if package database issues constantly make system update fail.
+  --keyrings-reset        Resets Arch and EndeavourOS keyrings.
+                          Use this only if keyring issues constantly make system update fail.
+  --no-keyring            Do not try to update keyrings first.
+  --no-sync               Do not run 'sync' after update.
+  --show-only-fixed       Show only packages that have already been fixed (runs: arch-audit -u) and exit.
+  --show-upstream-news    Show the news page of the upstream site and exit.
+  --helper                AUR helper name. Supported: yay, paru, pacman.
+                          Default: pacman
+                          Other AUR helpers supporting option -Sua like yay should work as well.
+  --paru                  Same as --helper=paru.
+  --yay                   Same as --helper=yay.
+  --aur                   Uses the AUR helper configured in /etc/eos-script-lib-yad.conf.
+  --pacman                Same as --helper=pacman. Default. (Note: pacman does not support AUR directly).
+  --min-free-bytes        Minimum amount of free space (in bytes) that the root partition should have
+                          before updating. Otherwise a warning message will be displayed.
+                          Default: $min_free_bytes
 
 Tip: create an alias in file ~/.bashrc for eos-update to have the options you need, for example:
 
@@ -252,6 +304,8 @@ Main() {
     local nvidia=no                               # user may enable Nvidia check with --nvidia
     local nvidia_opt=""
     local sync="sync"
+    local -r eml=/etc/pacman.d/endeavouros-mirrorlist
+    local -r aml=/etc/pacman.d/mirrorlist
 
     local -r RED=$'\e[0;91m'
     local -r GREEN=$'\e[0;92m'

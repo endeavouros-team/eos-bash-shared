@@ -29,10 +29,8 @@ export -f Restart_me
 
 yad_ChangeDisplayResolution() {
     local reso="$1"
-    local progname="${BASH_SOURCE[1]}"    #  "$(basename $0)"
-    if ! type xrandr >& /dev/null ; then
-        DIE "this implementation needs package 'xorg-xrandr'."
-    fi
+    local progname=${0##*/}
+    eos-assert-deps $progname xorg-xrandr yad || return 1
     local query="$(xrandr --query)"
     local output="$(echo "$query" | grep -m1 " connected " | awk '{print $1}')"
     local xrandr="xrandr --output $output --mode"

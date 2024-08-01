@@ -33,12 +33,14 @@ Untagged()   { echo "$1" | sed -e 's|<[/]*[ib]>||g' ; }
 eos_yad_infomsg() {
     local msg="$1"
     Untagged "$msg"  >&2
+    which yad &>/dev/null && \
     eos_yad --form --text="$(Monospaced "$msg")" --title="Message" --tail --wrap --image=info \
             --button=yad-quit:0 "$@"
 }
 
 DIE() {
     Untagged "$1" >&2
+    which yad &>/dev/null && \
     eos_yad --form --text="$(Monospaced "$1")\n" --title="$progname: error" \
             --width=400 \
             --image=error --button=yad-ok:0
@@ -56,8 +58,8 @@ WallpaperSelect() {
         height=$hmin
     fi
 
+    eos-assert-deps $progname yad || exit 1
     pic="$(eos_yad --file --filename="$picfolder" --width=700 --height=$height --title="Choose wallpaper file")"
-    test $? -eq 0 || exit 1
 }
 
 XfceSetWallpaper() {
@@ -323,11 +325,13 @@ EOF
 
 Main()
 {
-    local progname="$(basename "$0")"
+    local progname=${0##*/}
     local DE="$(eos_GetDeOrWm)"
     local picfolder=/usr/share/endeavouros/backgrounds
     local pic=""
     local history_of_backgrounds="$HOME/.$progname.history-of-wallpapers"   # saves history of wallpaper file names
+
+    yad_missing_check $progname
 
     case "$DE" in
         XFCE) type xrandr >& /dev/null || DIE "Sorry, this implementation needs package 'xorg-xrandr' on Xfce." ;;

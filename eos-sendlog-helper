@@ -94,6 +94,27 @@ ReopenStdin() {
     fi
 }
 
+CanUseYad() {
+    # check if yad exists, and if so, can we use it
+
+    local -n _use_yad="$1"
+
+    if expac -Q %n yad >/dev/null ; then
+        _use_yad=yes                                                  # yad is installed
+        if [ "$EUID" = "0" ] && eos_is_in_chroot ; then
+            _use_yad=no                                               # don't use yad in chroot
+        else
+            case "$XDG_SESSION_TYPE" in
+                tty)       _use_yad=no ;;                             # tty does not support yad
+                x11)       [ "$DISPLAY" ]         || _use_yad=no ;;   # no DISPLAY, no yad
+                wayland-*) [ "$WAYLAND_DISPLAY" ] || _use_yad=no ;;   # same with wayland
+            esac
+        fi
+    else
+        _use_yad=no                                                   # yad is not installed
+    fi
+}
+
 Main() {
     local -r progname="${0##*/}"
     local -r log=/tmp/tmp.$progname.log
@@ -106,21 +127,14 @@ Main() {
         termbin
     )
     local expire=7     # this initial value here will always be overwritten by eos-sendlog
-    local yad=yes
+    local yad=""
     local infile=""
     local commands=""
     local stdin_needs_opening=no
 
     source /usr/share/endeavouros/scripts/eos-script-lib-yad || exit 1
 
-    if [ "$EUID" = "0" ] && eos_is_in_chroot ; then
-        yad=no
-    else
-        case "$XDG_SESSION_TYPE" in
-            x11)       [ "$DISPLAY" ]         || yad=no ;;
-            wayland-*) [ "$WAYLAND_DISPLAY" ] || yad=no ;;
-        esac
-    fi
+    CanUseYad yad
 
     while [ "$1" ] ; do
         case "$1" in

@@ -6,6 +6,7 @@ UserWants() {
     case "$user_wants" in
         cli | both) [ "$1" = "cli" ] && return 0 ;;
     esac
+    which yad &>/dev/null || return 1
     case "$user_wants" in
         gui | both) [ "$1" = "gui" ] && return 0 ;;
     esac
