@@ -19,8 +19,10 @@ ExitFail() { exit 1; }
 UpdatesInclude() { echo "$updates" | grep "^$1$" >/dev/null ; }
 IsInstalled()    { expac -Q %n "$1" >/dev/null ; }
 DriverCheck()    {
-    if UpdatesInclude "$1" && IsInstalled "$2" && ! UpdatesInclude "$2" ; then
-        msgs+=("updates include $1 but not $2")
+    local -r linux="$1"
+    local -r nvidia="$2"
+    if UpdatesInclude "$linux" && IsInstalled "$nvidia" && ! UpdatesInclude "$nvidia" ; then
+        msgs+=("updates include $linux but not $nvidia")
     fi
 }
 
@@ -43,6 +45,8 @@ Parameters() {
 }
 
 Main() {
+    expac %n nvidia nvidia-lts >/dev/null || exit 0     # nothing to do
+
     local -r progname=${0##*/}
     local RED=$'\e[0;91m'
     local RESET=$'\e[0m'
@@ -50,7 +54,6 @@ Main() {
     local updates=""             # will contain all updates, separated by newline; see Parameters()
     local msgs=()
 
-    expac %n nvidia nvidia-lts >/dev/null || exit 0     # nothing to do
     echo ":: Nvidia check..." >&2
 
     Parameters "$@"

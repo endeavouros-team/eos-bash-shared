@@ -220,8 +220,8 @@ Options:
                           for unsupported mirrors.
                           This may be useful when one or more mirrors start failing unexpectedly.
                           Note: only x86_64 hardware is supported.
-  --check-mirrors-eos     Check files $eml for unsupported mirrors.
-  --check-mirrors-arch    Check files $aml for unsupported mirrors.
+  --check-mirrors-eos     Check file $eml for unsupported mirrors.
+  --check-mirrors-arch    Check file $aml for unsupported mirrors.
   --nvidia                Check also nvidia driver vs. kernel updates. Useful only with the Nvidia GPU.
   --clear-databases       Clears package database files.
                           Use this only if package database issues constantly make system update fail.
@@ -294,7 +294,6 @@ Main() {
     local helper="pacman"
     local min_free_bytes=$((1000 * 1000 * 1000))  # default: 1 GB
 
-    local helper2=":"
     local lock=/var/lib/pacman/db.lck
     local rmopt=f
 
@@ -330,7 +329,7 @@ Main() {
         sudo bash -c "rm -$rmopt $lock; [ -e $lock ] || { pacman -Sy && eos-update-extras ${subopts[*]} && pacman -Su && $sync ; }"
     else
         echo2green "Updating native and AUR apps..."
-        helper2="/usr/bin/sudo -u $LOGNAME $helper -Sua"
+        local helper2="/usr/bin/sudo -u $LOGNAME $helper -Sua"
         sudo bash -c "rm -$rmopt $lock; [ -e $lock ] || { pacman -Sy && eos-update-extras ${subopts[*]} && pacman -Su && $helper2 ; $sync ; }"
     fi
 }
