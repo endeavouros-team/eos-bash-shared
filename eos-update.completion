@@ -12,9 +12,14 @@ _eos-update_()
 
     local options=$(eos-update --dump-options)
     case "$prev" in
-        --min-free-bytes) _eos-update_complete "{1..9}" ;;
-        --helper)         _eos-update_complete "yay paru pacman" ;;
-        *)                _eos-update_complete "$options" ;;
+        --min-free-bytes)
+            _eos-update_complete "{1..9}" ;;
+        --helper)
+            _eos-update_complete "yay paru pacman" ;;
+        --edit-mirrorlist)
+            _eos-update_complete "arch endeavouros" ;;
+        *)
+            _eos-update_complete "$options" ;;
     esac
 }
 complete -F _eos-update_    eos-update

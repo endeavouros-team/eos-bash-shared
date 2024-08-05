@@ -33,7 +33,12 @@ MirrorCheckResult() {
         echo2 "    unknown or offline mirrors: ${#unsupported[@]}"
         printf "%s\n" "${unsupported[@]}" | sed 's|^|      Server = |'
     fi
-    [ ${#unsupported[@]} -eq 0 ] && [ ${#supported[@]} -gt 0 ]     # create the return code, 0=success, 1=fail
+    if [ ${#unsupported[@]} -eq 0 ] && [ ${#supported[@]} -gt 0 ] ; then     # create the return code, 0=success, 1=fail
+        return 0
+    else
+        EditMirrorlist $ml
+        return 1
+    fi
 }
 
 Hardware-x86_64() { [ $(eos_GetArch) = x86_64 ] || DIE "sorry, this implementation supports only x86_64 environment"; }
@@ -118,6 +123,19 @@ CheckYourEndeavourosMirrorlist() {
     [ "$data" ] || DIE "sorry, cannot fetch the latest EndeavourOS mirrorlist data"
 }
 
+EditMirrorlist() {
+    local list="$1"   # arch, endeavouros, or the full path of the mirrorlist
+    local editor=$(EosSudoEditor)
+    local ml
+    [ "$editor" ] || DIE "suitable editor (for root) not found, please check variable EOS_SUDO_EDITORS in /etc/eos-script-lib-yad.conf"
+    case "$list" in
+        arch | $aml)        ml="$aml" ;;
+        endeavouros | $eml) ml="$eml" ;;
+        "") DIE "supported mirrorlists: arch, endeavouros" ;;
+    esac
+    RunInTerminal "echo 'Starting to edit $ml:'; sudo $editor $ml"
+}
+
 ResetKeyrings() {
     Cmd sudo mv /etc/pacman.d/gnupg /root/pacman-key.bak.$(date +%Y%m%d-%H%M).by.$progname
     Cmd sudo pacman-key --init
@@ -143,13 +161,14 @@ OptionCheck() {
 
 Options() {
     local opts
-    local lopts="aur,clear-databases,dump-options,keyrings-reset,nvidia,nvidia-auto,no-keyring,no-sync,helper:,min-free-bytes:,paru,yay,pacman,help"
-    lopts+=",show-only-fixed,show-upstream-news,check-mirrors-arch,check-mirrors-eos,check-mirrors"
+    local lopts="aur,clear-databases,dump-options,keyrings-reset,nvidia,nvidia-auto,no-keyring,no-sync,helper:"
+    lopts+=",min-free-bytes:,paru,yay,pacman,help"
+    lopts+=",show-only-fixed,show-upstream-news,check-mirrors-arch,check-mirrors-eos,check-mirrors,edit-mirrorlist:"
     local sopts="h"
 
-    opts="$(/usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
-        Options -h
-        return 1
+    opts="$(LANG=C /usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
+        echo2 "==> more info with command: $progname --help"
+        exit 1
     }
     eval set -- "$opts"
 
@@ -166,6 +185,7 @@ Options() {
             --check-mirrors-eos)                 CheckYourEndeavourosMirrorlist || ((ret++))
                                                  exit $ret
                                                  ;;
+            --edit-mirrorlist)                   EditMirrorlist "$2"; exit 0 ;;
             --nvidia)                            OptionCheck "$1" && nvidia=yes ;;
             --no-keyring)                        keyring=no ;;
             --no-sync)                           sync=":" ;;
@@ -193,8 +213,16 @@ Options() {
                 exit 0
                 ;;
 
-            -h | --help)
-                cat <<EOF
+            -h | --help) Usage; exit 0 ;;
+            
+            --) shift ; break ;;
+        esac
+        shift
+    done
+}
+
+Usage() {
+    cat <<EOF
 $progname is a package updater for EndeavourOS and Arch.
 
 $progname is implemented as a wrapper around commands pacman and optionally yay/paru.
@@ -222,6 +250,7 @@ Options:
                           Note: only x86_64 hardware is supported.
   --check-mirrors-eos     Check file $eml for unsupported mirrors.
   --check-mirrors-arch    Check file $aml for unsupported mirrors.
+  --edit-mirrorlist       Edit chosen mirrorlist file. Supported: arch, endeavouros. No default.
   --nvidia                Check also nvidia driver vs. kernel updates. Useful only with the Nvidia GPU.
   --clear-databases       Clears package database files.
                           Use this only if package database issues constantly make system update fail.
@@ -248,13 +277,6 @@ Tip: create an alias in file ~/.bashrc for eos-update to have the options you ne
      alias eos-update='eos-update --nvidia --no-sync --paru'
 
 EOF
-                exit 0
-                ;;
-            
-            --) shift ; break ;;
-        esac
-        shift
-    done
 }
 
 IsSupportedOS() {
