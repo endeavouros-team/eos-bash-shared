@@ -30,7 +30,7 @@ export -f Restart_me
 yad_ChangeDisplayResolution() {
     local reso="$1"
     local progname=${0##*/}
-    eos-assert-deps $progname xorg-xrandr yad || return 1
+    eos_assert_deps $progname xorg-xrandr yad || return 1
     local query="$(xrandr --query)"
     local output="$(echo "$query" | grep -m1 " connected " | awk '{print $1}')"
     local xrandr="xrandr --output $output --mode"

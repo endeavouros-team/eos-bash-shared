@@ -31,6 +31,8 @@ source /etc/eos-script-lib-yad.conf      # for EOS_ROOTER and other configs
 export EOS_WICON=/usr/share/endeavouros/EndeavourOS-icon.png
 export EOS_YAD_STARTER_CMD="/usr/bin/yad --window-icon=$EOS_WICON"
 
+# Avoid hyphens in function names because of POSIX standard, use underscores instead.
+
 eos_yad() { GDK_BACKEND=x11 $EOS_YAD_STARTER_CMD "$@"; }
 
 translations_dir=/usr/share/endeavouros/scripts  # needed in translations.bash
@@ -51,7 +53,7 @@ yad_missing_check() {
     fi
 }
 
-eos-assert-deps() {      # params: prog deps
+eos_assert_deps() {      # params: prog deps
     local -r prog="$1"
     shift
     local failcount=0

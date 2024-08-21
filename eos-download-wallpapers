@@ -187,7 +187,7 @@ Main()
     local retval=0
     local oldies
 
-    eos-assert-deps $progname yad || return 1
+    eos_assert_deps $progname yad || return 1
 
     [ -n "$implementation_default" ] || implementation_default=git
 
