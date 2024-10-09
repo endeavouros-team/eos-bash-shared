@@ -172,7 +172,7 @@ OptionCheck() {
 Options() {
     local opts
     local lopts="aur,clear-databases,dump-options,keyrings-reset,nvidia,nvidia-auto,no-keyring,no-sync,helper:"
-    lopts+=",min-free-bytes:,paru,yay,pacman,help"
+    lopts+=",min-free-bytes:,pacdiff,paru,yay,pacman,help"
     lopts+=",show-only-fixed,show-upstream-news,check-mirrors-arch,check-mirrors-eos,check-mirrors,edit-mirrorlist:"
     local sopts="h"
 
@@ -205,6 +205,7 @@ Options() {
             --helper)                            SetHelper "$2" ; shift ;;
             --aur)                               SetHelper ;;
             --paru | --yay | --pacman)           SetHelper "${1/--/}" ;;
+	    --pacdiff)                           pacdiffer="$pacdiffer_cmd_default" ;;
             --show-only-fixed)
                 which arch-audit >/dev/null && arch-audit -u
                 exit
@@ -270,6 +271,8 @@ Options:
   --no-sync               Do not run 'sync' after update.
   --show-only-fixed       Show only packages that have already been fixed (runs: arch-audit -u) and exit.
   --show-upstream-news    Show the news page of the upstream site and exit.
+  --pacdiff		  Run eos-pacdiff in the end of $progname. See also EOS_UPDATE_PACDIFFER
+  			  in file /etc/eos-script-lib-yad.conf.
   --helper                AUR helper name. Supported: yay, paru, pacman.
                           Default: pacman
                           Other AUR helpers supporting option -Sua like yay should work as well.
@@ -281,10 +284,10 @@ Options:
                           before updating. Otherwise a warning message will be displayed.
                           Default: $min_free_bytes
 
-Tip: create an alias in file ~/.bashrc for eos-update to have the options you need, for example:
+Tip: create an alias in file ~/.bashrc for $progname to have the options you need, for example:
 
      # Enable Nvidia update check, disable sync execution, use paru for AUR updates.
-     alias eos-update='eos-update --nvidia --no-sync --paru'
+     alias $progname='$progname --nvidia --no-sync --paru'
 
 EOF
 }
@@ -329,6 +332,8 @@ Main() {
     local lock=/var/lib/pacman/db.lck
     local rmopt=f
 
+    local pacdiffer=""                            # default = "" because pacdiff can change critical files
+    local -r pacdiffer_cmd_default="eos-pacdiff --quiet"
     local subopts=()
     local afteropts=()
     local keyring=yes                             # user may disable keyring check with --no-keyring
@@ -346,6 +351,8 @@ Main() {
 
     Options "$@"
 
+    [ "$EOS_UPDATE_PACDIFFER" ] && pacdiffer="$EOS_UPDATE_PACDIFFER"
+
     [ $nvidia  = yes ] && subopts+=(--nvidia)
     [ $keyring = yes ] && subopts+=(--keyrings)
 
@@ -356,14 +363,50 @@ Main() {
     if [ -e $lock ] && fuser $lock &>/dev/null ; then
         rmopt=i
     fi
-    if [ "$helper" = "pacman" ] ; then
-        echo2green "Updating native apps..."
-        sudo bash -c "rm -$rmopt $lock; [ -e $lock ] || { pacman -Sy && eos-update-extras ${subopts[*]} && pacman -Su && $sync ; }"
-    else
-        echo2green "Updating native and AUR apps..."
-        local helper2="/usr/bin/sudo -u $LOGNAME $helper -Sua"
-        sudo bash -c "rm -$rmopt $lock; [ -e $lock ] || { pacman -Sy && eos-update-extras ${subopts[*]} && pacman -Su && $helper2 ; $sync ; }"
+    local cmdfile=$(mktemp "$HOME/.$progname.helper.XXX")
+    case "$helper" in
+	pacman)
+            echo2green "Updating native apps..."
+	    cat <<EOF > "$cmdfile"
+#!/bin/bash
+
+eos_update_sudofunc() {
+    rm -$rmopt $lock
+    if [ ! -e $lock ] ; then
+        pacman -Sy                         || return
+        ${progname}-extras "${subopts[@]}" || return
+        pacman -Su                         || return
+        $pacdiffer
+        $sync
+   fi
+}
+eos_update_sudofunc
+EOF
+	    ;;
+	*)
+            echo2green "Updating native and AUR apps..."
+            local helper2="/usr/bin/sudo -u $LOGNAME $helper -Sua"
+	    cat <<EOF > "$cmdfile"
+#!/bin/bash
+
+eos_update_sudofunc() {
+    rm -$rmopt $lock
+    if [ ! -e $lock ] ; then
+        pacman -Sy                        || return
+        ${progname}-extras "${subopts[@]}" || return
+        pacman -Su                        || return
+        $helper2                          || return             # Note: 'paru' returns 1 on error, but 'yay' does not!
+        $pacdiffer
+        $sync
     fi
+}
+eos_update_sudofunc
+EOF
+	    ;;
+    esac
+    chmod u+x,go-rwx "$cmdfile"
+    sudo "$cmdfile"
+    rm -f "$cmdfile"
 }
 
 Main "$@"
