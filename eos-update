@@ -246,7 +246,7 @@ $progname includes (by default) special help in the following situations:
 - Running the 'sync' command after update.
 
 Optional help:
-- Can clear package databases in case of contant problems with them.
+- Can clear package databases in case of constant problems with them.
 - Can reset keyrings in case of constant problems with them.
 - Can check the validity of the locally configured lists of mirrors.
 - Updates AUR packages (with option --helper, see Usage below).
