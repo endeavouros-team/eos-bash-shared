@@ -23,11 +23,10 @@ eos-reboot-required.timer | Calls eos-reboot-required.service periodically.
 eos-script-lib-yad | Common bash code for various EOS apps.
 eos-script-lib-yad.conf | Configuration file for eos-script-lib-yad.
 eos-sendlog | Send a text file to pastebin, and save the returned URL to ~/.config/eos-sendlog.txt.<br>Example: `cat log.txt \| eos-sendlog`
+eos-update | Simple system updater using only terminal.
+eos-update.desktop | Launcher & icon for eos-update.
 eos-wallpaper-set | Sets the wallpaper according to the current DE, given file, or from given folder.
 ksetwallpaper.py | KDE wallpaper installer, forked from https://github.com/pashazz/ksetwallpaper.
 paccache-service-manager | Tool to manage paccache service (prevents package cache size growing too much).
 RunInTerminal | Run one or many commands in a new terminal. Useful for Welcome and related apps.
 su-c_wrapper | A small utility to perform command "su -c". Useful e.g. for users without sudoers rights.<br> Tip: make a short alias, for example: `alias root=su-c_wrapper`
-UpdateInTerminal | Simple system updater using only terminal. | deprecated
-UpdateInTerminal.desktop | Launcher & icon for UpdateInTerminal. | deprecated
-
