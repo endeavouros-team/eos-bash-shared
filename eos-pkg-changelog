@@ -1,0 +1,132 @@
+#!/bin/bash
+
+# Show the changelog of the given EndeavourOS package-name.
+
+INFO() { echo "$progname: info: $1" >&2; }
+DIE()  { echo "$progname: error: $1" >&2; Usage 1; }
+
+Usage() {
+    cat <<EOF >&2
+Usage:   $progname [options] package-name
+Options: --help, -h       This help.
+         --github         Uses github for showing the changelog.
+         --gitlab         Uses gitlab for showing the changelog.
+         --parameters     Show supported package names and options.
+EOF
+    [ "$1" ] && exit $1
+}
+
+Changelog() {
+    local -r progname=${0##*/}
+    local -r progpath=${0}
+    local pkgname=""
+    local changelog=""
+    local preferred_site=gitlab  # github or gitlab
+
+    # Known package-names:
+    declare -Ar PKG_CHANGELOGS=(
+        akm                               "https://github.com/endeavouros-team/PKGBUILDS/commits/master/akm"
+        arc-gtk-theme-eos                 "https://github.com/endeavouros-team/PKGBUILDS/commits/master/arc-gtk-theme-eos"
+        bashdb                            "https://aur.archlinux.org/cgit/aur.git/log/?h=bashdb"
+        calamares                         "https://github.com/endeavouros-team/PKGBUILDS/commits/master/calamares"
+        ckbcomp                           "https://salsa.debian.org/installer-team/console-setup/commits"
+        downgrade                         "https://github.com/archlinux-downgrade/downgrade/blob/main/CHANGELOG.md"
+        endeavouros-branding              "https://github.com/endeavouros-team/Branding/commits"
+        endeavouros-keyring               "https://github.com/endeavouros-team/keyring/commits"
+        endeavouros-mirrorlist            "https://github.com/endeavouros-team/PKGBUILDS/commits/master/endeavouros-mirrorlist"
+        endeavouros-theming               "https://github.com/endeavouros-team/endeavouros-theming/commits"
+        endeavouros-xfce4-terminal-colors "https://github.com/endeavouros-team/endeavouros-xfce4-terminal-colors/commits"
+        eos-apps-info                     "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-apps-info"
+        eos-bash-shared                   "https://github.com/endeavouros-team/eos-bash-shared/commits"
+        eos-breeze-sddm                   "https://github.com/endeavouros-team/eos-breeze-sddm/commits"
+        eos-downgrade                     "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-downgrade"
+        eos-dracut                        "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-dracut"
+        eos-hooks                         "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-hooks"
+        eos-lightdm-gtk-theme             "https://github.com/endeavouros-arm/PKGBUILDS/commits/master/eos-lightdm-gtk-theme"   #??
+        eos-lightdm-slick-theme           "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-lightdm-slick-theme"
+        eos-log-tool                      "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-log-tool"
+        eos-lxdm-gtk3                     "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-lxdm-gtk3"
+        eos-packagelist                   "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-packagelist"
+        eos-plasma-sddm-config            "https://github.com/endeavouros-team/eos-plasma-sddm-config/commits"
+        eos-qogir-icons                   "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-qogir-icons"
+        eos-quickstart                    "https://github.com/endeavouros-team/eos-quickstart/commits"
+        eos-rankmirrors                   "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-rankmirrors"
+        eos-sddm-theme                    "https://github.com/endeavouros-team/eos-sddm-theme/commits"
+        eos-settings-budgie               "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-settings-budgie"
+        eos-settings-cinnamon             "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-settings-cinnamon"
+        eos-settings-gnome                "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-settings-gnome"
+        eos-settings-i3wm                 "https://github.com/endeavouros-team/endeavouros-i3wm-setup/commits"
+        eos-settings-lxde                 "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-settings-lxde"
+        eos-settings-lxqt                 "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-settings-lxqt"
+        eos-settings-mate                 "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-settings-mate"
+        eos-settings-plasma               "https://github.com/endeavouros-team/eos-settings-plasma/commits"
+        eos-settings-xfce4                "https://github.com/endeavouros-team/endeavouros-xfce4-theming/commits"
+        eos-translations                  "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-translations"
+        eos-update-notifier               "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-update-notifier"
+        filesystem                        "https://gitlab.archlinux.org/archlinux/packaging/packages/filesystem/-/commits"
+        kernel-install-for-dracut         "https://gitlab.com/dalto.8/kernel-install-for-dracut/commits"
+        keyserver-rank                    "https://github.com/endeavouros-team/PKGBUILDS/commits/master/keyserver-rank"
+        lsb-release                       "https://gitlab.archlinux.org/archlinux/packaging/packages/lsb-release/-/commits"
+        mkinitcpio-openswap               "https://aur.archlinux.org/cgit/aur.git/log/?h=mkinitcpio-openswap"
+        nvidia-hook                       "https://github.com/endeavouros-team/PKGBUILDS/commits/master/nvidia-hook"
+        nvidia-inst                       "https://github.com/endeavouros-team/PKGBUILDS/commits/master/nvidia-inst"
+        pahis                             "https://github.com/endeavouros-team/PKGBUILDS/commits/master/pahis"
+        paru                              "https://github.com/Morganamilo/paru/releases"
+        rate-mirrors                      "https://github.com/westandskif/rate-mirrors/commits"
+        reflector-bash-completion         "https://github.com/endeavouros-team/PKGBUILDS/commits/master/reflector-bash-completion"
+        reflector-simple                  "https://github.com/endeavouros-team/PKGBUILDS/commits/master/reflector-simple"
+        welcome                           "https://github.com/endeavouros-team/welcome/commits"
+        yad                               "https://github.com/v1cont/yad/blob/master/NEWS"
+        yay                               "https://github.com/Jguer/yay/releases"
+        zfs-dkms                          "https://github.com/openzfs/zfs/releases"
+        zfs-utils                         "https://github.com/openzfs/zfs/releases"
+    )
+
+    while [ "$1" ] ; do
+        case "$1" in
+            --parameters)
+                # Dump names of supported packages and options.
+                declare -p PKG_CHANGELOGS | sed 's|\[|\n\[|g' | grep "^\[" | sed -E 's|^\[([^]]*).*|\1|'
+                printf "%s\n" "--parameters"  "--github"  "--gitlab"  "--help"  "-h"
+                exit 0
+                ;;
+            --github | --gitlab) preferred_site=${1:2} ;;
+            --help | -h) Usage 0 ;;
+            -*) DIE "unsupported option '$1'" ;;
+            *) pkgname="$1"
+               [ "$2" ] && INFO "parameter '$2' and later ignored"
+               break
+               ;;
+        esac
+        shift
+    done
+
+    [ "$pkgname" ] || DIE "please give the name of a package, for example: akm"
+
+    changelog="${PKG_CHANGELOGS[$pkgname]}"
+    [ "$changelog" ] || DIE "package name '$pkgname' is not supported"
+
+    case "$preferred_site" in
+        gitlab)
+            if [ "${changelog/github.com\/endeavouros-team/}" != "$changelog" ] ; then
+                local cl_old="$changelog"
+                changelog=$(eos-github2gitlab "$changelog")
+                if [ -z "$changelog" ] || [ "$chagelog" = "$cl_old" ] ; then
+                    DIE "package name '$pkgname' was not found"
+                fi
+            fi
+            ;;
+        github | *)
+            ;;
+    esac
+
+    # show the URL
+    for app in exo-open xdg-open kde-open ; do
+        if [ -x /bin/$app ] ; then
+            $app "$changelog"
+            return
+        fi
+    done
+}
+
+Changelog "$@"

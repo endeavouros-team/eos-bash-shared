@@ -1,0 +1,16 @@
+# bash completion for eos-pkg-changelog        -*- shell-script -*-
+
+_eos-pkg-changelog_complete() {
+    COMPREPLY=( $(compgen -W "$1" -- "$cur") )
+    [[ $COMPREPLY == *= ]] && compopt -o nospace
+    compopt -o nosort
+}
+
+_eos-pkg-changelog_() 
+{
+    local cur prev #words cword split
+    _init_completion -s || return
+
+    _eos-pkg-changelog_complete "$(eos-pkg-changelog --parameters)"
+}
+complete -F _eos-pkg-changelog_    eos-pkg-changelog
