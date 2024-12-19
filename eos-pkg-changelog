@@ -2,29 +2,84 @@
 
 # Show the changelog of the given EndeavourOS package-name.
 
-INFO() { echo "$progname: info: $1" >&2; }
-DIE()  { echo "$progname: error: $1" >&2; Usage 1; }
+echo2() { echo -e "$@" >&2; }
+INFO() { echo2 "==> $progname: info: $1"; }
+WARN() { echo2 "==> $progname: warning: $1"; }
+DIE()  { echo2 "\n==> $progname: error: $1\n"; Usage 1; }
 
 Usage() {
     cat <<EOF >&2
 Usage:   $progname [options] package-name
-Options: --help, -h       This help.
-         --github         Uses github for showing the changelog.
-         --gitlab         Uses gitlab for showing the changelog.
-         --parameters     Show supported package names and options.
+Options: --help, -h            This help.
+         --github              Uses github for showing the changelog.
+         --gitlab              Uses gitlab for showing the changelog.
+         --parameters          Show supported package names and options.
+         --clfile=X, -c=X      Replace PKG_CHANGELOGS array with a new one in (bash) file 'X'.
+         --detect-clfile, -d   Detects possible changelog file at '$clfile_def'.
 EOF
     [ "$1" ] && exit $1
+}
+
+Parameters() {
+    local sopts="c:dh"
+    local lopts="help,github,gitlab,parameters,clfile:,detect-clfile"
+    local opts=""
+
+    opts="$(/usr/bin/getopt -o="$sopts" --longoptions "$lopts" --name "$progname" -- "$@")" || Usage 1
+    eval set -- "$opts"
+
+    while [ "$1" ] ; do
+        case "$1" in
+            --clfile | -c)
+                clfile="$2"
+                shift
+                source "$clfile" || DIE "reading $clfile failed"      # get new PKG_CHANGELOGS and REPONAME
+                ;;
+            --detect-clfile | -d)
+                clfile="$clfile_def"
+                if [ -e "$clfile" ] ; then
+                    INFO "reading $clfile..."
+                    source "$clfile" || DIE "reading $clfile failed"
+                else
+                     [ "$REPONAME" = endeavouros ] && WARN "$clfile not found" || DIE "$clfile not found"
+                fi
+                ;;
+            --parameters)
+                # Dump names of supported packages and options.
+                declare -p PKG_CHANGELOGS | sed 's|\[|\n\[|g' | grep "^\[" | sed -E 's|^\[([^]]*).*|\1|'
+
+                local sopts2=${sopts//:/}
+                local lopts2=${lopts//:/}
+                printf "%s\n" ${sopts2//?/-& }--${lopts2//,/ --}
+                exit 0
+                ;;
+            --github | --gitlab)
+                preferred_site=${1:2}
+                ;;
+            --help | -h)
+                Usage 0
+                ;;
+            --) shift; break ;;
+        esac
+        shift
+    done
+    pkgname="$1"
+    [ "$2" ] && INFO "parameter '$2' and later ignored"
+    [ "$REPONAME" ] || REPONAME=endeavouros
 }
 
 Changelog() {
     local -r progname=${0##*/}
     local -r progpath=${0}
     local pkgname=""
-    local changelog=""
-    local preferred_site=gitlab  # github or gitlab
+    local changelog_url=""
+    local preferred_site=gitlab                 # github or gitlab
+    local clfile=""                             # for option -c; if given, contains PKG_CHANGELOGS
+    local -r clfile_def="./changelogs.conf"     # for option -d
+    local REPONAME=""
 
     # Known package-names:
-    declare -Ar PKG_CHANGELOGS=(
+    declare -A PKG_CHANGELOGS=( # for EndeavourOS
         akm                               "https://github.com/endeavouros-team/PKGBUILDS/commits/master/akm"
         arc-gtk-theme-eos                 "https://github.com/endeavouros-team/PKGBUILDS/commits/master/arc-gtk-theme-eos"
         bashdb                            "https://aur.archlinux.org/cgit/aur.git/log/?h=bashdb"
@@ -82,48 +137,33 @@ Changelog() {
         zfs-utils                         "https://github.com/openzfs/zfs/releases"
     )
 
-    while [ "$1" ] ; do
-        case "$1" in
-            --parameters)
-                # Dump names of supported packages and options.
-                declare -p PKG_CHANGELOGS | sed 's|\[|\n\[|g' | grep "^\[" | sed -E 's|^\[([^]]*).*|\1|'
-                printf "%s\n" "--parameters"  "--github"  "--gitlab"  "--help"  "-h"
-                exit 0
-                ;;
-            --github | --gitlab) preferred_site=${1:2} ;;
-            --help | -h) Usage 0 ;;
-            -*) DIE "unsupported option '$1'" ;;
-            *) pkgname="$1"
-               [ "$2" ] && INFO "parameter '$2' and later ignored"
-               break
-               ;;
-        esac
-        shift
-    done
+    Parameters "$@"
 
-    [ "$pkgname" ] || DIE "please give the name of a package, for example: akm"
+    [ "$pkgname" ] || DIE "please give the name of a package, for example: $progname akm"
 
-    changelog="${PKG_CHANGELOGS[$pkgname]}"
-    [ "$changelog" ] || DIE "package name '$pkgname' is not supported"
+    changelog_url="${PKG_CHANGELOGS[$pkgname]}"
+    [ "$changelog_url" ] || DIE "package name '$pkgname' is not supported"
 
-    case "$preferred_site" in
-        gitlab)
-            if [ "${changelog/github.com\/endeavouros-team/}" != "$changelog" ] ; then
-                local cl_old="$changelog"
-                changelog=$(eos-github2gitlab "$changelog")
-                if [ -z "$changelog" ] || [ "$chagelog" = "$cl_old" ] ; then
-                    DIE "package name '$pkgname' was not found"
+    if [ "$REPONAME" = endeavouros ] ; then
+        case "$preferred_site" in
+            gitlab)
+                if [ "${changelog_url/github.com\/endeavouros-team/}" != "$changelog_url" ] ; then
+                    local url_gitlab="$changelog_url"
+                    changelog_url=$(eos-github2gitlab "$changelog_url")
+                    if [ -z "$changelog_url" ] || [ "$changelog_url" = "$url_gitlab" ] ; then
+                        DIE "package name '$pkgname' was not found"
+                    fi
                 fi
-            fi
-            ;;
-        github | *)
-            ;;
-    esac
+                ;;
+            github | *)
+                ;;
+        esac
+    fi
 
     # show the URL
     for app in exo-open xdg-open kde-open ; do
         if [ -x /bin/$app ] ; then
-            $app "$changelog"
+            $app "$changelog_url"
             return
         fi
     done
