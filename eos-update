@@ -374,7 +374,7 @@ eos_update_sudofunc() {
     rm -$rmopt $lock
     if [ ! -e $lock ] ; then
         pacman -Sy                         || return
-        ${progname}-extras "${subopts[@]}" || return
+        ${progname}-extras ${subopts[*]}   || return
         pacman -Su                         || return
         $pacdiffer
         $sync
@@ -393,7 +393,7 @@ eos_update_sudofunc() {
     rm -$rmopt $lock
     if [ ! -e $lock ] ; then
         pacman -Sy                        || return
-        ${progname}-extras "${subopts[@]}" || return
+        ${progname}-extras ${subopts[*]}  || return
         pacman -Su                        || return
         $helper2                          || return             # Note: 'paru' returns 1 on error, but 'yay' does not!
         $pacdiffer
