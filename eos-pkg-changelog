@@ -16,13 +16,14 @@ Options: --help, -h            This help.
          --parameters          Show supported package names and options.
          --clfile=X, -c=X      Replace PKG_CHANGELOGS array with a new one in (bash) file 'X'.
          --detect-clfile, -d   Detects possible changelog file at '$clfile_def'.
+         --url, -u             Simply print the changelog URL instead of opening it in a browser.
 EOF
     [ "$1" ] && exit $1
 }
 
 Parameters() {
-    local sopts="c:dh"
-    local lopts="help,github,gitlab,parameters,clfile:,detect-clfile"
+    local sopts="c:dhu"
+    local lopts="help,github,gitlab,parameters,clfile:,detect-clfile,url"
     local opts=""
 
     opts="$(/usr/bin/getopt -o="$sopts" --longoptions "$lopts" --name "$progname" -- "$@")" || Usage 1
@@ -53,12 +54,9 @@ Parameters() {
                 printf "%s\n" ${sopts2//?/-& }--${lopts2//,/ --}
                 exit 0
                 ;;
-            --github | --gitlab)
-                preferred_site=${1:2}
-                ;;
-            --help | -h)
-                Usage 0
-                ;;
+            --github | --gitlab) preferred_site=${1:2} ;;
+            --url | -u)          return_url=yes ;;
+            --help | -h)         Usage 0 ;;
             --) shift; break ;;
         esac
         shift
@@ -77,6 +75,7 @@ Changelog() {
     local clfile=""                             # for option -c; if given, contains PKG_CHANGELOGS
     local -r clfile_def="./changelogs.conf"     # for option -d
     local REPONAME=""
+    local return_url=no                         # no=open URL, yes=return URL
 
     # Known package-names:
     declare -A PKG_CHANGELOGS=( # for EndeavourOS
@@ -161,12 +160,17 @@ Changelog() {
     fi
 
     # show the URL
-    for app in exo-open xdg-open kde-open ; do
-        if [ -x /bin/$app ] ; then
-            $app "$changelog_url"
-            return
-        fi
-    done
+    if [ $return_url = yes ] ; then
+        echo "$changelog_url"
+    else
+        # use mime binding to open the URL with a browser; if needed, fallback to firefox
+        for app in exo-open xdg-open kde-open firefox ; do
+            if [ -x /bin/$app ] ; then
+                $app "$changelog_url"
+                return
+            fi
+        done
+    fi
 }
 
 Changelog "$@"
