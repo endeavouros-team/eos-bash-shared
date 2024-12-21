@@ -42,7 +42,11 @@ Parameters() {
                     INFO "reading $clfile..."
                     source "$clfile" || DIE "reading $clfile failed"
                 else
-                     [ "$REPONAME" = endeavouros ] && WARN "$clfile not found" || DIE "$clfile not found"
+                    case "$REPONAME" in
+                        endeavouros) WARN "$clfile not found" ;;
+                        "")          INFO "using prefedined EndeavourOS changelog definitions" ;;
+                        *)           DIE "$clfile not found" ;;
+                    esac
                 fi
                 ;;
             --parameters)
