@@ -3,7 +3,7 @@
 # Show the changelog of the given EndeavourOS package-name.
 
 echo2() { echo -e "$@" >&2; }
-INFO() { echo2 "==> $progname: info: $1"; }
+INFO() { [ $quiet = no ] && echo2 "==> $progname: info: $1"; }
 WARN() { echo2 "==> $progname: warning: $1"; }
 DIE()  { echo2 "\n==> $progname: error: $1\n"; Usage 1; }
 
@@ -17,13 +17,14 @@ Options: --help, -h            This help.
          --clfile=X, -c=X      Replace PKG_CHANGELOGS array with a new one in (bash) file 'X'.
          --detect-clfile, -d   Detects possible changelog file at '$clfile_def'.
          --url, -u             Simply print the changelog URL instead of opening it in a browser.
+         --quiet               Don't show purely informational messages (but show errors and warnings).
 EOF
     [ "$1" ] && exit $1
 }
 
 Parameters() {
     local sopts="c:dhu"
-    local lopts="help,github,gitlab,parameters,clfile:,detect-clfile,url"
+    local lopts="help,github,gitlab,parameters,clfile:,detect-clfile,quiet,url"
     local opts=""
 
     opts="$(/usr/bin/getopt -o="$sopts" --longoptions "$lopts" --name "$progname" -- "$@")" || Usage 1
@@ -60,6 +61,7 @@ Parameters() {
                 ;;
             --github | --gitlab) preferred_site=${1:2} ;;
             --url | -u)          return_url=yes ;;
+            --quiet)             quiet=yes ;;
             --help | -h)         Usage 0 ;;
             --) shift; break ;;
         esac
@@ -80,6 +82,7 @@ Changelog() {
     local -r clfile_def="./changelogs.conf"     # for option -d
     local REPONAME=""
     local return_url=no                         # no=open URL, yes=return URL
+    local quiet=no
 
     # Known package-names:
     declare -A PKG_CHANGELOGS=( # for EndeavourOS
