@@ -9,7 +9,7 @@ DIE()  { echo2 "\n==> $progname: error: $1\n"; Usage 1; }
 
 Usage() {
     cat <<EOF >&2
-Usage:   $progname [options] package-name
+Usage:   $progname [options] package-name(s)
 Options: --help, -h            This help.
          --github              Uses github for showing the changelog.
          --gitlab              Uses gitlab for showing the changelog.
@@ -44,9 +44,8 @@ Parameters() {
                     source "$clfile" || DIE "reading $clfile failed"
                 else
                     case "$REPONAME" in
-                        endeavouros) WARN "$clfile not found" ;;
-                        "")          INFO "using prefedined EndeavourOS changelog definitions" ;;
-                        *)           DIE "$clfile not found" ;;
+                        endeavouros | "") ;;             # $clfile not found | using predefined EndeavourOS changelog definitions
+                        *) DIE "$clfile not found" ;;
                     esac
                 fi
                 ;;
@@ -67,18 +66,16 @@ Parameters() {
         esac
         shift
     done
-    pkgname="$1"
-    [ "$2" ] && INFO "parameter '$2' and later ignored"
+    pkgnames=("$@")
     [ "$REPONAME" ] || REPONAME=endeavouros
 }
 
 Changelog() {
     local -r progname=${0##*/}
     local -r progpath=${0}
-    local pkgname=""
-    local changelog_url=""
+    local pkgnames=()
     local preferred_site=gitlab                 # github or gitlab
-    local clfile=""                             # for option -c; if given, contains PKG_CHANGELOGS
+    local clfile=""                             # for option -c; if given, the file contains PKG_CHANGELOGS and REPONAME
     local -r clfile_def="./changelogs.conf"     # for option -d
     local REPONAME=""
     local return_url=no                         # no=open URL, yes=return URL
@@ -86,6 +83,7 @@ Changelog() {
 
     # Known package-names:
     declare -A PKG_CHANGELOGS=( # for EndeavourOS
+        # pkgname                         "URL(s) separated by '|'"
         akm                               "https://github.com/endeavouros-team/PKGBUILDS/commits/master/akm"
         arc-gtk-theme-eos                 "https://github.com/endeavouros-team/PKGBUILDS/commits/master/arc-gtk-theme-eos"
         bashdb                            "https://aur.archlinux.org/cgit/aur.git/log/?h=bashdb"
@@ -103,13 +101,14 @@ Changelog() {
         eos-downgrade                     "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-downgrade"
         eos-dracut                        "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-dracut"
         eos-hooks                         "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-hooks"
-        eos-lightdm-gtk-theme             "https://github.com/endeavouros-arm/PKGBUILDS/commits/master/eos-lightdm-gtk-theme"   #??
+        # eos-lightdm-gtk-theme            "https://github.com/endeavouros-arm/PKGBUILDS/commits/master/eos-lightdm-gtk-theme"   #??
+        eos-lightdm-gtk-theme             "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-lightdm-gtk-theme"
         eos-lightdm-slick-theme           "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-lightdm-slick-theme"
         eos-log-tool                      "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-log-tool"
         eos-lxdm-gtk3                     "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-lxdm-gtk3"
         eos-packagelist                   "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-packagelist"
         eos-plasma-sddm-config            "https://github.com/endeavouros-team/eos-plasma-sddm-config/commits"
-        eos-qogir-icons                   "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-qogir-icons"
+        eos-qogir-icons                   "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-qogir-icons|https://github.com/vinceliuice/Qogir-icon-theme/releases"
         eos-quickstart                    "https://github.com/endeavouros-team/eos-quickstart/commits"
         eos-rankmirrors                   "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-rankmirrors"
         eos-sddm-theme                    "https://github.com/endeavouros-team/eos-sddm-theme/commits"
@@ -124,59 +123,88 @@ Changelog() {
         eos-settings-xfce4                "https://github.com/endeavouros-team/endeavouros-xfce4-theming/commits"
         eos-translations                  "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-translations"
         eos-update-notifier               "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-update-notifier"
-        filesystem                        "https://gitlab.archlinux.org/archlinux/packaging/packages/filesystem/-/commits"
+        # filesystem                        "https://gitlab.archlinux.org/archlinux/packaging/packages/filesystem/commits"
         kernel-install-for-dracut         "https://gitlab.com/dalto.8/kernel-install-for-dracut/commits"
         keyserver-rank                    "https://github.com/endeavouros-team/PKGBUILDS/commits/master/keyserver-rank"
-        lsb-release                       "https://gitlab.archlinux.org/archlinux/packaging/packages/lsb-release/-/commits"
+        # lsb-release                       "https://gitlab.archlinux.org/archlinux/packaging/packages/lsb-release/commits"
         mkinitcpio-openswap               "https://aur.archlinux.org/cgit/aur.git/log/?h=mkinitcpio-openswap"
         nvidia-hook                       "https://github.com/endeavouros-team/PKGBUILDS/commits/master/nvidia-hook"
         nvidia-inst                       "https://github.com/endeavouros-team/PKGBUILDS/commits/master/nvidia-inst"
         pahis                             "https://github.com/endeavouros-team/PKGBUILDS/commits/master/pahis"
-        paru                              "https://github.com/Morganamilo/paru/releases"
-        rate-mirrors                      "https://github.com/westandskif/rate-mirrors/commits"
+        paru                              "https://github.com/Morganamilo/paru/releases|https://github.com/Morganamilo/paru/commits"
+        rate-mirrors                      "https://github.com/westandskif/rate-mirrors/releases|https://github.com/westandskif/rate-mirrors/commits"
         reflector-bash-completion         "https://github.com/endeavouros-team/PKGBUILDS/commits/master/reflector-bash-completion"
         reflector-simple                  "https://github.com/endeavouros-team/PKGBUILDS/commits/master/reflector-simple"
         welcome                           "https://github.com/endeavouros-team/welcome/commits"
-        yad                               "https://github.com/v1cont/yad/blob/master/NEWS"
-        yay                               "https://github.com/Jguer/yay/releases"
+        yad                               "https://github.com/v1cont/yad/blob/master/NEWS|https://github.com/v1cont/yad/commits"
+        yay                               "https://github.com/Jguer/yay/releases|https://github.com/Jguer/yay/commits"
         zfs-dkms                          "https://github.com/openzfs/zfs/releases"
         zfs-utils                         "https://github.com/openzfs/zfs/releases"
     )
 
     Parameters "$@"
 
-    [ "$pkgname" ] || DIE "please give the name of a package, for example: $progname akm"
+    HandlePkgnames
+}
 
-    changelog_url="${PKG_CHANGELOGS[$pkgname]}"
-    [ "$changelog_url" ] || DIE "package name '$pkgname' is not supported"
+HandlePkgnames() {
+    [ "$pkgnames" ] || DIE "please give package-name(s), for example: $progname akm"
+    local pkgname
+    local changelog_url=""
+    local urls_line=""
+    local URLS=()
+    local tmp=()
 
-    if [ "$REPONAME" = endeavouros ] ; then
-        case "$preferred_site" in
-            gitlab)
-                if [ "${changelog_url/github.com\/endeavouros-team/}" != "$changelog_url" ] ; then
-                    local url_gitlab="$changelog_url"
-                    changelog_url=$(eos-github2gitlab "$changelog_url")
-                    if [ -z "$changelog_url" ] || [ "$changelog_url" = "$url_gitlab" ] ; then
-                        DIE "package name '$pkgname' was not found"
+    for pkgname in "${pkgnames[@]}" ; do
+        changelog_url="${PKG_CHANGELOGS[$pkgname]}"
+        [ "$changelog_url" ] || DIE "package name '$pkgname' is not supported"
+
+        if [ "$REPONAME" = endeavouros ] ; then
+            case "$preferred_site" in
+                gitlab)
+                    if [ "${changelog_url/github.com\/endeavouros-team/}" != "$changelog_url" ] ; then
+                        # convert a github link to a corresponding gitlab link
+                        local url_github="$changelog_url"
+                        changelog_url=$(eos-github2gitlab "$changelog_url")
+                        if [ -z "$changelog_url" ] || [ "$changelog_url" = "$url_github" ] ; then
+                            DIE "package name '$pkgname' was not found"
+                        fi
                     fi
-                fi
-                ;;
-            github | *)
-                ;;
-        esac
-    fi
+                    ;;
+                github | *)
+                    ;;
+            esac
+        fi
 
-    # show the URL
-    if [ $return_url = yes ] ; then
-        echo "$changelog_url"
-    else
-        # use mime binding to open the URL with a browser; if needed, fallback to firefox
-        for app in exo-open xdg-open kde-open firefox ; do
-            if [ -x /bin/$app ] ; then
-                $app "$changelog_url"
-                return
-            fi
+        if [ $return_url = yes ] ; then
+            [ "$urls_line" ] && urls_line+="|$changelog_url" || urls_line="$changelog_url"
+        else
+            readarray -t tmp <<< $(echo "${changelog_url//|/$'\n'}")
+            URLS+=("${tmp[@]}")
+        fi
+    done
+    if [ "$urls_line" ] ; then
+        echo "$urls_line"            # show the URL(s) separated by '|'
+    elif [ "$URLS" ] ; then
+        OPEN_URLS "${URLS[@]}"       # open the URL(s)
+    fi
+}
+
+OPEN_URLS() {
+    # use mime binding to open the URL(s) with a browser; if needed, fallback to firefox
+    local xx
+    if [ -x /bin/exo-open ] ; then
+        exo-open "$@"
+    elif [ -x /bin/kde-open ] ; then
+        for xx in "$@" ; do
+            kde-open "$xx"
         done
+    elif [ -x /bin/xdg-open ] ; then
+        for xx in "$@" ; do
+            xdg-open "$xx"
+        done
+    elif [ -x /bin/firefox ] ; then
+        setsid firefox "$@"
     fi
 }
 
