@@ -157,7 +157,9 @@ HandlePkgnames() {
 
     for pkgname in "${pkgnames[@]}" ; do
         changelog_url="${PKG_CHANGELOGS[$pkgname]}"
-        [ "$changelog_url" ] || DIE "package name '$pkgname' is not supported"
+        if [ -z "$changelog_url" ] ; then
+            [ "$quiet" = no ] && DIE "package name '$pkgname' is not supported" || exit 1
+        fi
 
         if [ "$REPONAME" = endeavouros ] ; then
             case "$preferred_site" in
