@@ -17,8 +17,8 @@ Usage() {
     test -n "$1" && echo "Error: $1." >&2
 
     cat <<EOF >&2
-Usage: $progname option
-where
+Usage: $progname option(s)
+Options:
    --wireless
    --wifi         shows info about the wireless LAN device
    --ethernet     shows info about the ethernet controller
@@ -28,7 +28,7 @@ where
    --graphics     same as both --vga and --display
    --cpu          shows the name of the CPU type
    --vm           if running in VM, echoes the name of the VM (virtualbox, qemu, vmware)
-   --virtualbox   echoes "yes" is running in VirtualBox VM, otherwise "no"
+   --virtualbox   displays "yes" if running in VirtualBox VM, otherwise "no"
 EOF
 }
 
