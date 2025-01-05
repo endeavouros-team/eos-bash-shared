@@ -367,46 +367,36 @@ Main() {
     case "$helper" in
 	pacman)
             echo2green "Updating native apps..."
-	    cat <<EOF > "$cmdfile"
-#!/bin/bash
-
-eos_update_sudofunc() {
-    rm -$rmopt $lock
-    if [ ! -e $lock ] ; then
-        pacman -Sy                         || return
-        ${progname}-extras ${subopts[*]}   || return
-        pacman -Su                         || return
-        $pacdiffer
-        $sync
-   fi
-}
-eos_update_sudofunc
-EOF
+            CreateCmds
 	    ;;
 	*)
             echo2green "Updating native and AUR apps..."
-            local helper2="/usr/bin/sudo -u $LOGNAME $helper -Sua"
-	    cat <<EOF > "$cmdfile"
+            CreateCmds "$helper -Sua"
+	    ;;
+    esac
+    chmod u+x,go-rwx "$cmdfile"
+    "$cmdfile"
+    rm -f "$cmdfile"
+}
+
+CreateCmds() {
+    local helper2="$1"
+    cat <<EOF > "$cmdfile"
 #!/bin/bash
 
 eos_update_sudofunc() {
-    rm -$rmopt $lock
+    sudo rm -$rmopt $lock                 || return
     if [ ! -e $lock ] ; then
-        pacman -Sy                        || return
+        sudo pacman -Sy                   || return
         ${progname}-extras ${subopts[*]}  || return
-        pacman -Su                        || return
-        $helper2                          || return             # Note: 'paru' returns 1 on error, but 'yay' does not!
+        sudo pacman -Su                   || return
+        [ "$helper2" ] && $helper2        || return             # Note: 'paru' returns 1 on error, but 'yay' does not!
         $pacdiffer
         $sync
     fi
 }
 eos_update_sudofunc
 EOF
-	    ;;
-    esac
-    chmod u+x,go-rwx "$cmdfile"
-    sudo "$cmdfile"
-    rm -f "$cmdfile"
 }
 
 Main "$@"

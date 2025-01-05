@@ -31,7 +31,7 @@ Parameters() {
 
     # Update certain packages before others.
 
-    [ ${#update_first[@]} -ne 0 ] && pacman -S --noconfirm "${update_first[@]}"
+    [ ${#update_first[@]} -ne 0 ] && sudo pacman -S --noconfirm "${update_first[@]}"
     return 0
 }
 
