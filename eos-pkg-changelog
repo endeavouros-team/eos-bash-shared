@@ -13,13 +13,35 @@ Usage:   $progname [options] package-name(s)
 Options: --help, -h            This help.
          --github              Uses github for showing the changelog.
          --gitlab              Uses gitlab for showing the changelog.
-         --parameters          Show supported package names and options.
+         --parameters          Show supported package names and options. Implies option -d.
          --clfile=X, -c=X      Replace PKG_CHANGELOGS array with a new one in (bash) file 'X'.
          --detect-clfile, -d   Detects possible changelog file at '$clfile_def'.
          --url, -u             Simply print the changelog URL instead of opening it in a browser.
          --quiet               Don't show purely informational messages (but show errors and warnings).
 EOF
     [ "$1" ] && exit $1
+}
+
+DumpPkgnames() {
+    declare -p PKG_CHANGELOGS | sed 's|\[|\n\[|g' | grep "^\[" | sed -E 's|^\[([^]]*).*|\1|'
+}
+DumpOptions() {
+    local sopts2=${sopts//:/}
+    local lopts2=${lopts//:/}
+    printf "%s\n" ${sopts2//?/-& }--${lopts2//,/ --}
+}
+DetectClFile() {
+    local mode="$1"
+    clfile="$clfile_def"
+    if [ -e "$clfile" ] ; then
+        [ "$mode" = verbose ] && INFO "reading $clfile..."
+        source "$clfile" || DIE "reading $clfile failed"
+    else
+        case "$REPONAME" in
+            endeavouros | "") ;;             # $clfile not found | using predefined EndeavourOS changelog definitions
+            *) DIE "$clfile not found" ;;
+        esac
+    fi
 }
 
 Parameters() {
@@ -38,24 +60,12 @@ Parameters() {
                 source "$clfile" || DIE "reading $clfile failed"      # get new PKG_CHANGELOGS and REPONAME
                 ;;
             --detect-clfile | -d)
-                clfile="$clfile_def"
-                if [ -e "$clfile" ] ; then
-                    INFO "reading $clfile..."
-                    source "$clfile" || DIE "reading $clfile failed"
-                else
-                    case "$REPONAME" in
-                        endeavouros | "") ;;             # $clfile not found | using predefined EndeavourOS changelog definitions
-                        *) DIE "$clfile not found" ;;
-                    esac
-                fi
+                DetectClFile verbose
                 ;;
             --parameters)
-                # Dump names of supported packages and options.
-                declare -p PKG_CHANGELOGS | sed 's|\[|\n\[|g' | grep "^\[" | sed -E 's|^\[([^]]*).*|\1|'
-
-                local sopts2=${sopts//:/}
-                local lopts2=${lopts//:/}
-                printf "%s\n" ${sopts2//?/-& }--${lopts2//,/ --}
+                DetectClFile
+                DumpPkgnames
+                DumpOptions
                 exit 0
                 ;;
             --github | --gitlab) preferred_site=${1:2} ;;
