@@ -381,6 +381,7 @@ Main() {
 
 CreateCmds() {
     local helper2="$1"
+    [ "$helper2" ] || helper2=":"
     cat <<EOF > "$cmdfile"
 #!/bin/bash
 
@@ -390,7 +391,7 @@ eos_update_sudofunc() {
         sudo pacman -Sy                   || return
         ${progname}-extras ${subopts[*]}  || return
         sudo pacman -Su                   || return
-        [ "$helper2" ] && $helper2        || return             # Note: 'paru' returns 1 on error, but 'yay' does not!
+        $helper2                          || return             # Note: 'paru' returns 1 on error, but 'yay' does not!
         $pacdiffer
         $sync
     fi
