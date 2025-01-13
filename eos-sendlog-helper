@@ -11,6 +11,7 @@ $progname sends the input (stdin) to a pastebin service.
 Usage: $progname [options] command-string
 Options:
    --0x0         Uses 0x0.st
+   --0x45        Uses 0x45.st
    --dpaste      Uses dpaste.com
    --termbin     Uses termbin.com
    --help, -h    This help
@@ -18,7 +19,7 @@ Options:
    --no-yad      Prevent using yad messages.
 
 Without options the services are tried in order until one succeeds or all fail.
-Trial order: 0x0 dpaste termbin.
+Trial order: 0x0 0x45 dpaste termbin.
 EOF
     [ "$1" ] && exit "$1"
 }
@@ -31,6 +32,30 @@ EOF
     if [ $code -eq 0 ] ; then
         echo "$url"
         echo "--> The URL below will expire in $expire days." >&2
+    else
+        echo "==> 'curl' failed with code $code." >&2
+    fi
+    return $code
+}
+0x45() {
+    local url code response expiry readable_date delete_url
+
+    # Check if jq is available
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "==> 'jq' is required for 0x45.st but not installed." >&2
+        return 1
+    fi
+
+    response=$($curl --fail -F'file=@-' -Fexpires_in=$((expire * 24))h https://0x45.st/p)
+    code=$?
+    if [ $code -eq 0 ] ; then
+        url=$(jq -r '.url' <<< "$response")
+        expiry=$(jq -r '.expires_at' <<< "$response")
+        delete_url=$(jq -r '.delete_url' <<< "$response")
+        readable_date=$(date -d "${expiry}" '+%B %d, %Y at %I:%M %p %Z')
+        echo "$url"
+        echo "--> The URL below will expire on $readable_date." >&2
+        echo "--> You can delete the paste by visiting $delete_url" >&2
     else
         echo "==> 'curl' failed with code $code." >&2
     fi
@@ -50,6 +75,7 @@ Tee() {
 GeneralWarning() {
     declare -A urls=(
         [0x0]="https://0x0.st"
+        [0x45]="https://0x45.st"
         [dpaste]="https://dpaste.com"
         [termbin]="termbin.com"
     )
@@ -123,6 +149,7 @@ Main() {
     local count=0
     local services=(
         0x0
+        0x45
         dpaste
         termbin
     )
@@ -138,13 +165,13 @@ Main() {
 
     while [ "$1" ] ; do
         case "$1" in
-            --0x0 | --dpaste | --termbin)  services=("${1:2}") ;;
-            --help | -h)                   Usage 0 ;;
-            --expire=*)                    expire="${1#*=}" ;;
-            --no-yad)                      yad=no ;;
-            --infile=*)                    infile="${1#*=}"; break ;;
-            -*)                            echo2 "Unsupported option '$1'"; exit 1 ;;
-            *)                             commands="$*"; break ;;
+            --0x0 | --0x45 | --dpaste | --termbin) services=("${1:2}") ;;
+            --help | -h)   Usage 0 ;;
+            --expire=*)    expire="${1#*=}" ;;
+            --no-yad)      yad=no ;;
+            --infile=*)    infile="${1#*=}"; break ;;
+            -*)           echo2 "Unsupported option '$1'"; exit 1 ;;
+            *)           commands="$*"; break ;;
         esac
         shift
     done
