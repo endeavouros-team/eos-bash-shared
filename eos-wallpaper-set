@@ -153,26 +153,26 @@ WallpaperSetCommon() {
         # Not DEs but WMs:
 
         SWAY)
-            AssertPicture endeavouros-wallpaper.png no
+            AssertPicture "$pic_default" no
             killall swaybg   # otherwise wallpaper doesn't change!
             swaybg -i "$pic"
             ;;
         BSPWM)
-            AssertPicture endeavouros-wallpaper.png no
+            AssertPicture "$pic_default" no
             nitrogen --set-auto "$pic"
             ;;
         OPENBOX)
-            AssertPicture endeavouros-wallpaper.png no
+            AssertPicture "$pic_default" no
             nitrogen --set-auto "$pic"
             ;;
         QTILE)
-            AssertPicture endeavouros-wallpaper.png no
+            AssertPicture "$pic_default" no
             feh --bg-scale "$pic"
             ;;
         *)
             echo "$progname: info: not setting wallpaper to $DE ..." >&2
 
-            #AssertPicture endeavouros-wallpaper.png no
+            #AssertPicture "$pic_default" no
             #feh --bg-scale "$pic"
             #DIE "Sorry, desktop '$DE' is not supported."
             ;;
@@ -224,11 +224,11 @@ AssertPicture() {
             esac
             ;;
         DEFAULT | default | DEFAULT-2021 | default-2021)
-            pic="$picfolder/endeavouros-wallpaper.png"
+            pic="$picfolder/"$pic_default""
             ;;
         ISO | iso)
             pic="$picfolder/endeavouros-default-background.png"          # new picture
-            [ -r "$pic" ] || pic="$picfolder/endeavouros-wallpaper.png"  # old picture
+            [ -r "$pic" ] || pic="$picfolder/"$pic_default""  # old picture
             ;;
     esac
 
@@ -323,12 +323,27 @@ Examples:
 EOF
 }
 
+PicDefault() {
+    local pic_formats=(avif jpg png)        # supported in this order
+    local -r pic_base=endeavouros-wallpaper
+    local fmt
+
+    for fmt in "${pic_formats[@]}" ; do
+        if [ -e "$picfolder/$pic_base"."$fmt" ] ; then
+            pic_default="$pic_base.$fmt"
+            return 0  # not used
+        fi
+    done
+    return 1  # not used
+}
+
 Main()
 {
-    local progname=${0##*/}
-    local DE="$(eos_GetDeOrWm)"
-    local picfolder=/usr/share/endeavouros/backgrounds
+    local -r progname=${0##*/}
+    local -r DE="$(eos_GetDeOrWm)"
+    local -r picfolder=/usr/share/endeavouros/backgrounds
     local pic=""
+    local pic_default=""
     local history_of_backgrounds="$HOME/.$progname.history-of-wallpapers"   # saves history of wallpaper file names
 
     yad_missing_check $progname
@@ -337,6 +352,7 @@ Main()
         XFCE) type xrandr >& /dev/null || DIE "Sorry, this implementation needs package 'xorg-xrandr' on Xfce." ;;
     esac
 
+    PicDefault
     Parameters "$@"
 
     if [ -z "$pic" ] ; then

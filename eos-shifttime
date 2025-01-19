@@ -68,7 +68,12 @@ Main()
     cmd+=";chmod 0644 $mlist"      # Make sure mirrorlist has proper permissions.
 
     cmd2="$(echo "$cmd" | tr ';' '\n' | sed 's|^|  |')"
-    RunInTerminal "printf 'Reverting all packages to $REVERTDATE\n\n'; echo 'Need elevated privileges to run commands:'; echo '$cmd2'; $EOS_ROOTER '$cmd'"
+
+    if [ "$(whoami)" = "root" ] ; then
+        RunInTerminal "printf 'Reverting all packages to $REVERTDATE\n\n'; echo 'Need elevated privileges to run commands:'; echo '$cmd2'; $cmd"
+    else
+        RunInTerminal "printf 'Reverting all packages to $REVERTDATE\n\n'; echo 'Need elevated privileges to run commands:'; echo '$cmd2'; $EOS_ROOTER '$cmd'"
+    fi
 }
 
 Main "$@"
