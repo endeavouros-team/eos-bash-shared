@@ -263,8 +263,11 @@ Options:
   --check-mirrors-eos     Check file $eml for unsupported mirrors.
   --check-mirrors-arch    Check file $aml for unsupported mirrors.
   --edit-mirrorlist       Edit chosen mirrorlist file. Supported: arch, endeavouros. No default.
-  --fast                  Do a fast check for updates in order to reduce the number of database syncs.
-                          Note that this check may not work always even if updates actually are available.
+  --fast                  Do a *fast check* for updates in order to reduce the amount of network traffic.
+                          Note that the fast check
+                            * applies to only updates on EndeavourOS and Arch repos, and optionally on AUR
+                            * in special cases may not detect available updates; if so, run
+                              $progname without option --fast
   --nvidia                Check also nvidia driver vs. kernel updates. Useful only with the Nvidia GPU.
   --clear-databases       Clears package database files.
                           Use this only if package database issues constantly make system update fail.
