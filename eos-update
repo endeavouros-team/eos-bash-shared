@@ -171,10 +171,10 @@ OptionCheck() {
 
 Options() {
     local opts
-    local lopts="aur,clear-databases,dump-options,fast,keyrings-reset,nvidia,nvidia-auto,no-keyring,no-sync,helper:"
+    local lopts="aur,clear-databases,descriptions,dump-options,fast,keyrings-reset,nvidia,nvidia-auto,no-keyring,no-sync,helper:"
     lopts+=",min-free-bytes:,pacdiff,paru,yay,pacman,help"
     lopts+=",show-only-fixed,show-upstream-news,check-mirrors-arch,check-mirrors-eos,check-mirrors,edit-mirrorlist:"
-    local sopts="h"
+    local sopts="dh"
 
     opts="$(LANG=C /usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
         echo2 "==> more info with command: $progname --help"
@@ -199,6 +199,7 @@ Options() {
             --fast)                              eufast=yes ;;
             --nvidia)                            OptionCheck "$1" && nvidia=yes ;;
             --no-keyring)                        keyring=no ;;
+            --descriptions | -d)                 descriptions=yes ;;
             --no-sync)                           sync=":" ;;
             --keyrings-reset)                    ResetKeyrings ;;
             --clear-databases)                   ClearDatabases ;;
@@ -268,6 +269,7 @@ Options:
                             * applies to only updates on EndeavourOS and Arch repos, and optionally on AUR
                             * in special cases may not detect available updates; if so, run
                               $progname without option --fast
+  --descriptions, -d      Show the descriptions of the packages to be updated. Note: AUR not supported.
   --nvidia                Check also nvidia driver vs. kernel updates. Useful only with the Nvidia GPU.
   --clear-databases       Clears package database files.
                           Use this only if package database issues constantly make system update fail.
@@ -344,6 +346,7 @@ Main() {
     local afteropts=()
     local keyring=yes                             # user may disable keyring check with --no-keyring
     local nvidia=no                               # user may enable Nvidia check with --nvidia
+    local descriptions=no                         # user may enable showing descriptions of the package updates
     local nvidia_opt=""
     local sync="sync"
     local eufast=no
@@ -368,6 +371,7 @@ Main() {
 
     [ "$EOS_UPDATE_PACDIFFER" ] && pacdiffer="$EOS_UPDATE_PACDIFFER"
 
+    [ $descriptions  = yes ] && subopts+=(--descriptions)
     [ $nvidia  = yes ] && subopts+=(--nvidia)
     [ $keyring = yes ] && subopts+=(--keyrings)
 
