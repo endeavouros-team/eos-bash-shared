@@ -171,7 +171,7 @@ OptionCheck() {
 
 Options() {
     local opts
-    local lopts="aur,clear-databases,descriptions,dump-options,fast,keyrings-reset,nvidia,nvidia-auto,no-keyring,no-sync,helper:"
+    local lopts="aur,clear-databases,descriptions,dump-options,fast,keyrings-reset,nvidia,no-keyring,no-sync,helper:"
     lopts+=",min-free-bytes:,pacdiff,paru,yay,pacman,help"
     lopts+=",show-only-fixed,show-upstream-news,check-mirrors-arch,check-mirrors-eos,check-mirrors,edit-mirrorlist:"
     local sopts="dh"
