@@ -334,6 +334,10 @@ echo2green() { echo2 "${GREEN}$1${RESET}" ; }
 Main() {
     local progname="${0##*/}"
     source /usr/share/endeavouros/scripts/eos-script-lib-yad || return 1
+    source /usr/share/endeavouros/scripts/translations.bash || return 1
+
+    _init_translations
+    
     local helper="pacman"
     local min_free_bytes=$((1000 * 1000 * 1000))  # default: 1 GB
 
@@ -365,7 +369,7 @@ Main() {
     if [ $eufast = yes ] ; then
         eos-update-fast $eufast_opt
         case "$?" in
-            2) echo2 "No updates." ; exit ;;
+            2) echo2 "$(ltr sysup_no)" ; exit ;;
         esac
     fi
 
