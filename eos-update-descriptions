@@ -9,13 +9,22 @@ BannerLine() {
     local -r str="$1"
     [ "$separator" = "yes" ] || return
     [ -n "$str" ] || return
+    local maxlength="$(stty size | awk '{print $NF}')"      # "$COLUMNS"
+
+    case "$maxlength" in
+        "") maxlength=$maxlen
+            ;;
+        *)  ((maxlength-=2))
+            [ $maxlength -lt $maxlen ] && maxlength=$maxlen
+            ;;
+    esac
     case "$title" in
-        "") printf "%0.s$str" $(seq $maxlen) ;;
+        "") printf "%0.s$str" $(seq $maxlength) ;;
         *)
             # ===== title =====
             # left        right
             local titlelen=${#title}
-            local leftlen=$(((maxlen - titlelen)/2))    # == rightlen
+            local leftlen=$(((maxlength - titlelen)/2))    # leftlen == rightlen
             printf "%0.s$str" $(seq $leftlen)
             echo -n " $title "
             printf "%0.s$str" $(seq $leftlen)
