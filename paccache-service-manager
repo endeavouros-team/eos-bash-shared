@@ -12,6 +12,46 @@ source /usr/share/endeavouros/scripts/eos-script-lib-yad || exit 1
 export -f eos_yad
 AssignIconVariables_in_eos_bash_shared
 
+PaccacheOptions_for_keep() {
+    local opts=""
+    local lopts="dryrun,move:,remove,arch:,cachedir:,force,help,ignore:,keep:,min-atime:,min-mtime:,nocolor,null,quiet,uninstalled,verbose,version"
+    local sopts="dm:ra:c:i:fhk:zquvV"
+
+    opts="$(/usr/bin/getopt -o="$sopts" --longoptions "$lopts" --name "$progname" -- "$@")" || {
+        $OptFunc -h
+        return 1
+    }
+    eval set -- "$opts"
+
+    while true ; do
+        case "$1" in
+            -d|--dryrun) DIE "$FUNCNAME: paccache option $1 was not expected" ;;
+            -m|--move)   DIE "$FUNCNAME: paccache option $1 was not expected" ;;  # shift
+            -r|--remove)
+                current_keepcount=3
+                ;;
+
+            -a|--arch|-c|--cachedir|-i|--ignore) shift ;;
+            -f|--force) ;;
+            -h|--help) ;;
+            -k|--keep)
+                current_keepcount="$2"
+                [ "${current_keepcount//[0-9]/}" ] && DIE "invalid value '$current_keepcount' for paccache option $1 in file\n$s"
+                shift
+                ;;
+            --min-atime|--min-mtime) shift ;;
+            --nocolor) ;;
+            -z|--null) ;;
+            -q|--quiet) ;;
+            -u|--uninstalled) ;;
+            -v|--verbose) ;;
+            -V|--version) ;;
+            --) shift; break ;;
+        esac
+        shift
+    done
+}
+
 DIE() {
     local msg="$1"
     shift
@@ -39,25 +79,10 @@ GetCurrentValues() {
     fi
 
     current_period="$(   grep "^OnCalendar=" $t | cut -d '=' -f 2)"
-    current_keepcount="$(grep "^ExecStart="  $s | awk '{print $NF}')"
+    current_keepcount="$(grep "^ExecStart="  $s | sed -E 's|^ExecStart=[^ \t]+[ \t]*||')"
     current_delete_uninstalled=FALSE
 
-    # ad hoc check for the 'keepcount' value
-    case "$current_keepcount" in
-        -r) current_keepcount=3 ;;                        # original value
-        -rk*)
-            [ "$(echo "${current_keepcount:3}" | sed 's|[0-9]||g')" = "" ] || {
-                local line=$(grep "^ExecStart=" $s)
-                DIE "invalid value for option <tt>-k</tt> in file\n<tt>$s</tt>\nline:\n\n<tt>${line::70}</tt>"
-            }
-            current_keepcount="${current_keepcount:3}"    # value after using this app
-            [ -z "$current_keepcount" ] && DIE "file '$s': paccache option '-k' requires a value."
-            ;;
-        *)
-            local line=$(grep "^ExecStart=" $s)
-            DIE "invalid line in file\n<tt>$s</tt>\nline:\n\n<tt>${line::70}</tt>"
-            ;;
-    esac
+    PaccacheOptions_for_keep $current_keepcount
 }
 
 Usage() {
