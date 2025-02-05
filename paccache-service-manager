@@ -25,28 +25,19 @@ PaccacheOptions_for_keep() {
 
     while true ; do
         case "$1" in
-            -d|--dryrun) DIE "$FUNCNAME: paccache option $1 was not expected" ;;
-            -m|--move)   DIE "$FUNCNAME: paccache option $1 was not expected" ;;  # shift
-            -r|--remove)
-                current_keepcount=3
-                ;;
-
-            -a|--arch|-c|--cachedir|-i|--ignore) shift ;;
-            -f|--force) ;;
-            -h|--help) ;;
-            -k|--keep)
-                current_keepcount="$2"
-                [ "${current_keepcount//[0-9]/}" ] && DIE "invalid value '$current_keepcount' for paccache option $1 in file\n$s"
-                shift
-                ;;
-            --min-atime|--min-mtime) shift ;;
-            --nocolor) ;;
-            -z|--null) ;;
-            -q|--quiet) ;;
-            -u|--uninstalled) ;;
-            -v|--verbose) ;;
-            -V|--version) ;;
             --) shift; break ;;
+
+            # these options we simply ignore or don't want:
+            -d|--dryrun|-m|--move) DIE "$FUNCNAME: paccache option $1 was not expected" ;;
+            -a|--arch|-c|--cachedir|-i|--ignore|--min-atime|--min-mtime) shift ;;
+            -f|--force|-h|--help|--nocolor|-z|--null|-q|--quiet|-u|--uninstalled|-v|--verbose|-V|--version) ;;
+
+            # this is what we are looking for:
+            -r|--remove) current_keepcount=3 ;;
+            -k|--keep)   current_keepcount="$2"
+                         [ "${current_keepcount//[0-9]/}" ] && DIE "invalid value '$current_keepcount' for paccache option $1 in file\n$s"
+                         shift
+                         ;;
         esac
         shift
     done
@@ -82,6 +73,7 @@ GetCurrentValues() {
     current_keepcount="$(grep "^ExecStart="  $s | sed -E 's|^ExecStart=[^ \t]+[ \t]*||')"
     current_delete_uninstalled=FALSE
 
+    current_keepcount=$(eval echo ${current_keepcount})    # handle potential $PACCACHE_ARGS
     PaccacheOptions_for_keep $current_keepcount
 }
 
