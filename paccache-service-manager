@@ -35,7 +35,7 @@ PaccacheOptions_for_keep() {
             # this is what we are looking for:
             -r|--remove) current_keepcount=3 ;;
             -k|--keep)   current_keepcount="$2"
-                         [ "${current_keepcount//[0-9]/}" ] && DIE "invalid value '$current_keepcount' for paccache option $1 in file\n$s"
+                         [ "${current_keepcount//[0-9]/}" ] && DIE "cannot parse paccache options.\nFile:\n  $s\nLine:\n  $exec_start_line"
                          shift
                          ;;
         esac
@@ -69,12 +69,22 @@ GetCurrentValues() {
         test -r $s || DIE "sorry, $s does not exist. $why"
     fi
 
-    current_period="$(   grep "^OnCalendar=" $t | cut -d '=' -f 2)"
-    current_keepcount="$(grep "^ExecStart="  $s | sed -E 's|^ExecStart=[^ \t]+[ \t]*||')"
+    current_period="$(grep "^OnCalendar=" $t | cut -d '=' -f 2)"
+    local -r exec_start_line="$(grep "^ExecStart=" $s | tail -n1)"
+    current_keepcount="$(echo "$exec_start_line" | sed -E 's|^ExecStart=[^ \t]+[ \t]*||')"   # try to get all paccache parameters from the ExecStart line
     current_delete_uninstalled=FALSE
 
-    current_keepcount=$(eval echo ${current_keepcount})    # handle potential $PACCACHE_ARGS
-    PaccacheOptions_for_keep $current_keepcount
+    # current_keepcount=$(eval echo ${current_keepcount})
+    # PaccacheOptions_for_keep $current_keepcount
+
+    local arg args=()
+    for arg in $current_keepcount ; do
+        case "$arg" in
+            '$PACCACHE_ARGS') args+=($PACCACHE_ARGS) ;;
+            *) args+=("$arg") ;;
+        esac
+    done
+    PaccacheOptions_for_keep "${args[@]}"
 }
 
 Usage() {
