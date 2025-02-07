@@ -62,6 +62,35 @@ WallpaperSelect() {
     pic="$(eos_yad --file --filename="$picfolder" --width=700 --height=$height --title="Choose wallpaper file")"
 }
 
+xfce4_set_wallpaper() {
+    local wallpaper="" mime_type="" properties="" property
+
+    # The rest of this function is copied from package 'xapp', script 'xfce4-set-wallpaper'
+    # with minor modifications.
+
+    # Author: Weitian Leung <weitianleung@gmail.com>
+    # Version: 2.1
+    # License: GPL-3.0
+    # Description: set a picture as xfce4 wallpaper
+
+    # xfce4-desktop requires an absolute path.
+    wallpaper="$(realpath "$1")"
+
+    # check image
+    mime_type=`file --mime-type -b "$wallpaper"`
+    if [[ ! "$mime_type" == image/* ]]; then
+        DIE "Invalid image"                          # original: echo "Invalid image"
+        exit 1
+    fi
+
+    # set to every monitor that contains image-path/last-image
+    properties=$(xfconf-query -c xfce4-desktop -p /backdrop -l | grep -e "screen.*/monitor.*image-path$" -e "screen.*/monitor.*/last-image$")
+
+    for property in $properties; do
+        xfconf-query -c xfce4-desktop -p $property -s "$wallpaper"
+    done
+}
+
 XfceSetWallpaper() {
     # Set all "last-image" values in file $conf to picture $pic
 
@@ -69,7 +98,7 @@ XfceSetWallpaper() {
 
     case "$(eos_GetArch)" in
         armv7h) impl=1 ;;
-        *)      impl=2 ;;       # 2 = best for x86_64 (?)
+        *)      impl=3 ;;  # was 2
     esac
 
     case "$impl" in
@@ -95,6 +124,9 @@ XfceSetWallpaper() {
                 prop=$(xfconf-query --channel xfce4-desktop --list | grep  /last-image$  | grep $mon)
                 xfconf-query --channel xfce4-desktop --property $prop --set "$pic"
             done
+            ;;
+        3)
+            xfce4_set_wallpaper "$pic"
             ;;
     esac
 }
