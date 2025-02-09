@@ -74,7 +74,7 @@ xfce4_set_wallpaper() {
     # Description: set a picture as xfce4 wallpaper
 
     # xfce4-desktop requires an absolute path.
-    wallpaper="$(realpath "$1")"
+    wallpaper="$(realpath "${1//file:\/\//}")"
 
     # check image
     mime_type=`file --mime-type -b "$wallpaper"`
@@ -219,7 +219,7 @@ $underline
 
 EOF
     fi
-    echo "$(date '+%x %X'): $(realpath "$pic")" >> "$history_of_backgrounds"
+    echo "$(date '+%x %X'): $(realpath "${pic//file:\/\//}")" >> "$history_of_backgrounds"
 }
 
 PictureNameVariations() {
