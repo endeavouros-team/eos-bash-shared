@@ -87,23 +87,23 @@ Github2Gitlab() {   # old implementation
         gitlab | *)
             local sed=(sed)
             if [ -n "$(echo "$url" | grep "/raw\.githubusercontent\.com/")" ] ; then
-                sed+=(-e 's|/raw\.githubusercontent\.com/|/gitlab.com/|')
-                sed+=(-e 's|/main/|/-/raw/main/|' )
+                sed+=(-e 's|/raw\.githubusercontent\.com/|/gitlab.com/|g')
+                sed+=(-e 's|/main/|/-/raw/main/|g' )
                 if [ "$keep_master" = "yes" ] ; then
-                    sed+=(-e 's|/master/|/-/raw/master/|')
+                    sed+=(-e 's|/master/|/-/raw/master/|g')
                 else
-                    sed+=(-e 's|/master/|/-/raw/main/|')
+                    sed+=(-e 's|/master/|/-/raw/main/|g')
                 fi
-                sed+=(-e 's|/endeavouros-team/calamares/|/endeavouros-team/calamares/-/raw/|' )
-                sed+=(-e 's|/install-scripts-next/|/install-scripts-next/-/raw/|')
+                sed+=(-e 's|/endeavouros-team/calamares/|/endeavouros-team/calamares/-/raw/|g' )
+                sed+=(-e 's|/install-scripts-next/|/install-scripts-next/-/raw/|g')
             else
-                sed+=(-e 's|/github\.com/|/gitlab.com/|')
+                sed+=(-e 's|/github\.com/|/gitlab.com/|g')
             fi
             sed+=(
-                -e 's|/endeavouros-team/|/endeavouros-filemirror/|'
-                -e 's|/tree/master/|/-/blob/master/|'
-                -e 's|/blob/master/|/-/blob/master/|'
-                -e 's|/eos-bash-shared$|/eos-apps-info|' # ???
+                -e 's|/endeavouros-team/|/endeavouros-filemirror/|g'
+                -e 's|/tree/master/|/-/blob/master/|g'
+                -e 's|/blob/master/|/-/blob/master/|g'
+                # -e 's|/eos-bash-shared$|/eos-apps-info|' # ???
             )
             echo "$url" | "${sed[@]}"
             ;;

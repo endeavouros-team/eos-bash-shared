@@ -3,21 +3,30 @@
 # Show the changelog of the given EndeavourOS package-name.
 
 echo2() { echo -e "$@" >&2; }
-INFO() { [ $quiet = no ] && echo2 "==> $progname: info: $1"; }
-WARN() { echo2 "==> $progname: warning: $1"; }
-DIE()  { echo2 "\n==> $progname: error: $1\n"; Usage 1; }
+INFO()  { [ $quiet = no ] && echo2 "==> $progname: info: $1"; }
+WARN()  { echo2 "==> $progname: warning: $1"; }
+DIE()   { echo2 "\n==> $progname: error: $1\n"; Usage 1; }
+
+DefaultsTo() {
+    local var="$1"
+    local val="$2"
+    [ "$var" = "$val" ] && echo " (default)"
+}
 
 Usage() {
     cat <<EOF >&2
-Usage:   $progname [options] package-name(s)
-Options: --help, -h            This help.
-         --github              Uses github for showing the changelog.
-         --gitlab              Uses gitlab for showing the changelog.
-         --parameters          Show supported package names and options. Implies option -d.
-         --clfile=X, -c=X      Replace PKG_CHANGELOGS array with a new one in (bash) file 'X'.
-         --detect-clfile, -d   Detects possible changelog file at '$clfile_def'.
-         --url, -u             Simply print the changelog URL instead of opening it in a browser.
-         --quiet               Don't show purely informational messages (but show errors and warnings).
+Usage: $progname [options] package-name(s)
+Options:
+       --help, -h            This help.
+       --github              Uses github for showing the changelog$(DefaultsTo $preferred_site github).
+       --gitlab              Uses gitlab for showing the changelog$(DefaultsTo $preferred_site gitlab).
+       --parameters          Show supported package names and options.
+       --clfile=X, -c=X      Obtain changelog definitions from the given file X.
+       --detect-clfile, -d   [No more used].
+       --url, -u             Simply print the changelog URL instead of opening it in a browser.
+       --quiet               Don't show purely informational messages (but show errors and warnings).
+Notes:
+       - By default the changelog URL will be opened in a web browser.
 EOF
     [ "$1" ] && exit $1
 }
@@ -30,18 +39,35 @@ DumpOptions() {
     local lopts2=${lopts//:/}
     printf "%s\n" ${sopts2//?/-& }--${lopts2//,/ --}
 }
-DetectClFile() {
-    local mode="$1"
-    clfile="$clfile_def"
-    if [ -e "$clfile" ] ; then
-        [ "$mode" = verbose ] && INFO "reading $clfile..."
-        source "$clfile" || DIE "reading $clfile failed"
-    else
-        case "$REPONAME" in
-            endeavouros | "") ;;             # $clfile not found | using predefined EndeavourOS changelog definitions
-            *) DIE "$clfile not found" ;;
-        esac
+SourceClFile() {
+    if [ "$clfile" ] ; then
+        [ -e "$clfile" ] || DIE "given config file '$clfile' not found"
+        source "$clfile" || DIE "reading $clfile failed"      # get new PKG_CHANGELOGS and REPONAME
+        return 0
     fi
+    local file files=() otherdef="./assets.conf"
+    if [ -e "$otherdef" ] ; then
+        # advanced: use additional changelog definitions in file /etc/changelogs.conf.$rname
+        rname=$(grep "^local REPONAME=" "$otherdef" | awk '{print $2}' | cut -d'=' -f2 | sed 's|"||g')
+        if [ "$rname" ] ; then
+            file="${clfile_eos%.*}.$rname"
+            [ -e "$file" ] && files+=("$file")
+        fi
+    fi
+    files+=("$clfile_eos")
+    for file in "${files[@]}" ; do
+        if [ -e "$file" ] ; then
+            clfile="$file"
+            source "$clfile" || DIE "reading $clfile failed"      # get new PKG_CHANGELOGS and REPONAME
+            return 0
+        fi
+    done
+    DIE "changelog definition file $clfile_eos not found"
+}
+DumpParameters() {
+    SourceClFile
+    DumpPkgnames
+    DumpOptions
 }
 
 Parameters() {
@@ -54,30 +80,22 @@ Parameters() {
 
     while [ "$1" ] ; do
         case "$1" in
-            --clfile | -c)
-                clfile="$2"
-                shift
-                source "$clfile" || DIE "reading $clfile failed"      # get new PKG_CHANGELOGS and REPONAME
-                ;;
-            --detect-clfile | -d)
-                DetectClFile verbose
-                ;;
-            --parameters)
-                DetectClFile
-                DumpPkgnames
-                DumpOptions
-                exit 0
-                ;;
-            --github | --gitlab) preferred_site=${1:2} ;;
-            --url | -u)          return_url=yes ;;
-            --quiet)             quiet=yes ;;
-            --help | -h)         Usage 0 ;;
-            --) shift; break ;;
+            --detect-clfile | -d) ;;    # no more needed...
+            --parameters)         DumpParameters; exit 0 ;;
+            --clfile | -c)        clfile="$2"; shift ;;
+            --github | --gitlab)  preferred_site=${1:2} ;;
+            --url | -u)           return_url=yes ;;
+            --quiet)              quiet=yes ;;
+            --help | -h)          Usage 0 ;;
+            --)                   shift; break ;;
         esac
         shift
     done
+    SourceClFile
+
+    [ "$REPONAME" ]             || DIE "variable REPONAME is not set in config file $clfile"
+    [ "${#PKG_CHANGELOGS[@]}" ] || DIE "variable PKG_CHANGELOGS is not set in config file $clfile"
     pkgnames=("$@")
-    [ "$REPONAME" ] || REPONAME=endeavouros
 }
 
 Changelog() {
@@ -86,71 +104,11 @@ Changelog() {
     local pkgnames=()
     local preferred_site=gitlab                 # github or gitlab
     local clfile=""                             # for option -c; if given, the file contains PKG_CHANGELOGS and REPONAME
-    local -r clfile_def="./changelogs.conf"     # for option -d
-    local REPONAME=""
+    local -r clfile_eos=/etc/changelogs.conf.endeavouros
     local return_url=no                         # no=open URL, yes=return URL
     local quiet=no
-
-    # Known package-names:
-    declare -A PKG_CHANGELOGS=( # for EndeavourOS
-        # pkgname                         "URL(s) separated by '|'"
-        akm                               "https://github.com/endeavouros-team/PKGBUILDS/commits/master/akm"
-        arc-gtk-theme-eos                 "https://github.com/endeavouros-team/PKGBUILDS/commits/master/arc-gtk-theme-eos"
-        bashdb                            "https://aur.archlinux.org/cgit/aur.git/log/?h=bashdb"
-        calamares                         "https://github.com/endeavouros-team/PKGBUILDS/commits/master/calamares"
-        ckbcomp                           "https://salsa.debian.org/installer-team/console-setup/commits"
-        downgrade                         "https://github.com/archlinux-downgrade/downgrade/blob/main/CHANGELOG.md"
-        endeavouros-branding              "https://github.com/endeavouros-team/Branding/commits"
-        endeavouros-keyring               "https://github.com/endeavouros-team/keyring/commits"
-        endeavouros-mirrorlist            "https://github.com/endeavouros-team/PKGBUILDS/commits/master/endeavouros-mirrorlist"
-        endeavouros-theming               "https://github.com/endeavouros-team/endeavouros-theming/commits"
-        endeavouros-xfce4-terminal-colors "https://github.com/endeavouros-team/endeavouros-xfce4-terminal-colors/commits"
-        eos-apps-info                     "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-apps-info"
-        eos-bash-shared                   "https://github.com/endeavouros-team/eos-bash-shared/commits"
-        eos-breeze-sddm                   "https://github.com/endeavouros-team/eos-breeze-sddm/commits"
-        eos-downgrade                     "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-downgrade"
-        eos-dracut                        "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-dracut"
-        eos-hooks                         "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-hooks"
-        # eos-lightdm-gtk-theme            "https://github.com/endeavouros-arm/PKGBUILDS/commits/master/eos-lightdm-gtk-theme"   #??
-        eos-lightdm-gtk-theme             "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-lightdm-gtk-theme"
-        eos-lightdm-slick-theme           "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-lightdm-slick-theme"
-        eos-log-tool                      "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-log-tool"
-        eos-lxdm-gtk3                     "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-lxdm-gtk3"
-        eos-packagelist                   "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-packagelist"
-        eos-plasma-sddm-config            "https://github.com/endeavouros-team/eos-plasma-sddm-config/commits"
-        eos-qogir-icons                   "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-qogir-icons|https://github.com/vinceliuice/Qogir-icon-theme/releases"
-        eos-quickstart                    "https://github.com/endeavouros-team/eos-quickstart/commits"
-        eos-rankmirrors                   "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-rankmirrors"
-        eos-sddm-theme                    "https://github.com/endeavouros-team/eos-sddm-theme/commits"
-        eos-settings-budgie               "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-settings-budgie"
-        eos-settings-cinnamon             "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-settings-cinnamon"
-        eos-settings-gnome                "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-settings-gnome"
-        eos-settings-i3wm                 "https://github.com/endeavouros-team/endeavouros-i3wm-setup/commits"
-        eos-settings-lxde                 "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-settings-lxde"
-        eos-settings-lxqt                 "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-settings-lxqt"
-        eos-settings-mate                 "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-settings-mate"
-        eos-settings-plasma               "https://github.com/endeavouros-team/eos-settings-plasma/commits"
-        eos-settings-xfce4                "https://github.com/endeavouros-team/endeavouros-xfce4-theming/commits"
-        eos-translations                  "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-translations"
-        eos-update-notifier               "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-update-notifier"
-        # filesystem                        "https://gitlab.archlinux.org/archlinux/packaging/packages/filesystem/commits"
-        kernel-install-for-dracut         "https://gitlab.com/dalto.8/kernel-install-for-dracut/commits"
-        keyserver-rank                    "https://github.com/endeavouros-team/PKGBUILDS/commits/master/keyserver-rank"
-        # lsb-release                       "https://gitlab.archlinux.org/archlinux/packaging/packages/lsb-release/commits"
-        mkinitcpio-openswap               "https://aur.archlinux.org/cgit/aur.git/log/?h=mkinitcpio-openswap"
-        nvidia-hook                       "https://github.com/endeavouros-team/PKGBUILDS/commits/master/nvidia-hook"
-        nvidia-inst                       "https://github.com/endeavouros-team/PKGBUILDS/commits/master/nvidia-inst"
-        pahis                             "https://github.com/endeavouros-team/PKGBUILDS/commits/master/pahis"
-        paru                              "https://github.com/Morganamilo/paru/releases|https://github.com/Morganamilo/paru/commits"
-        rate-mirrors                      "https://github.com/westandskif/rate-mirrors/releases|https://github.com/westandskif/rate-mirrors/commits"
-        reflector-bash-completion         "https://github.com/endeavouros-team/PKGBUILDS/commits/master/reflector-bash-completion"
-        reflector-simple                  "https://github.com/endeavouros-team/PKGBUILDS/commits/master/reflector-simple"
-        welcome                           "https://github.com/endeavouros-team/welcome/commits"
-        yad                               "https://github.com/v1cont/yad/blob/master/NEWS|https://github.com/v1cont/yad/commits"
-        yay                               "https://github.com/Jguer/yay/releases|https://github.com/Jguer/yay/commits"
-        zfs-dkms                          "https://github.com/openzfs/zfs/releases"
-        zfs-utils                         "https://github.com/openzfs/zfs/releases"
-    )
+    local REPONAME=""                           # name of the package repository
+    declare -A PKG_CHANGELOGS=()                # package-names and changelog-urls
 
     Parameters "$@"
 
@@ -168,7 +126,7 @@ HandlePkgnames() {
     for pkgname in "${pkgnames[@]}" ; do
         changelog_url="${PKG_CHANGELOGS[$pkgname]}"
         if [ -z "$changelog_url" ] ; then
-            [ "$quiet" = no ] && DIE "package name '$pkgname' is not supported" || exit 1
+            [ "$quiet" = no ] && DIE "package name '$pkgname' is not supported in $clfile" || exit 1
         fi
 
         if [ "$REPONAME" = endeavouros ] ; then
