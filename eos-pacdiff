@@ -39,25 +39,10 @@ SafetyWarning() {
 HasPacdiffs() { test -n "$(echo q | DIFFPROG=diff /usr/bin/pacdiff)" ; }
 DoesSudo()    { groups | grep -Pw 'root|wheel' >/dev/null ; }
 
-HasBackupInView() {
-    [ "$BACKUP_VIEW" = "yes" ] || return
-    cat <<EOF >> $cmdfile
-/usr/bin/sed -i $pacdiff -e "s|\(v\|V)\)|\1 test \\\$BACKUP -ne 0 \&\& \\\$SUDO cp -v \"\\\$file\" \"\\\$file.bak\"|"
-EOF
-}
-HasBackupInMerge() {
-    [ "$BACKUP_MERGE" = "yes" ] || return
-    cat <<EOF >> $cmdfile
-/usr/bin/sed -i $pacdiff -e "s|\(m\|M)\)|\1 test \\\$BACKUP -ne 0 \&\& \\\$SUDO cp -v \"\\\$file\" \"\\\$file.bak\"|"
-EOF
-}
-
 PacdiffCmd() {
     local differ="$1"
     local prompt=""
     local msg=""
-    local -r pacdiff="/usr/local/bin/pacdiff-eos"    # will backup original file on view mode too (with option -b)
-    local bopt=""
     
     if HasPacdiffs ; then
         case "$differ" in            # some differs may need options
@@ -67,24 +52,37 @@ PacdiffCmd() {
         msg="Starting pacdiff & $differ as root ..."
         prompt="echo '$msg'"
 
-        local cmdfile=$(mktemp "$HOME/.tmp.$progname.tmpXXX")        # don't mount $HOME with noexec!
+        local cmdfile
+        cmdfile=$(mktemp "$HOME/.tmp.$progname.tmpXXX") || DIE $LINENO "creating a temporary file under $HOME failed"        # don't mount $HOME with noexec!
         local doas="/usr/bin/su-c_wrapper"
 
         cat <<EOF > $cmdfile
 #!/bin/bash
-/usr/bin/cp /usr/bin/pacdiff $pacdiff
 EOF
-        [ "$BACKUP_OVERWRITE" = "yes" ] && bopt="--backup"  # may backup before overwrite
-        HasBackupInView                           # may backup before view too
-        HasBackupInMerge                          # may backup before merge too
+        if [ $backup_all = yes ] ; then
+            local -r pacnews=($(DIFFPROG=diff /usr/bin/pacdiff -o))
+            local -r time=$(date +%Y%m%d-%H%M%S)
+
+            cat <<EOF >> $cmdfile
+echo "==> Creating backups under folder $backupdir" >&2
+/usr/bin/mkdir -p $backupdir
+/usr/bin/chmod go-rwx $backupdir
+EOF
+           local bf bu
+           for bf in "${pacnews[@]}" ; do
+               bf=${bf%.*}                                          # e.g. /etc/akm.conf
+               bu=${bf##*/}.$time                                   # e.g. akm.conf.20250215-170300
+               echo "/usr/bin/cp $bf $backupdir/$bu" >> $cmdfile
+           done
+        fi
 
         if DoesSudo ; then
             doas="/usr/bin/sudo"
-            echo "DIFFPROG=\"/usr/bin/$differ\" $pacdiff $bopt 2>/dev/null" >> $cmdfile
+            echo "DIFFPROG=\"/usr/bin/$differ\" /usr/bin/pacdiff 2>/dev/null" >> $cmdfile
         else
-            echo "DIFFPROG=\"/usr/bin/$differ\" $doas -p $pacdiff $bopt 2>/dev/null" >> $cmdfile
+            echo "DIFFPROG=\"/usr/bin/$differ\" $doas -p /usr/bin/pacdiff 2>/dev/null" >> $cmdfile
         fi
-        echo "rm -f $pacdiff" >> $cmdfile
+
         chmod u+x,go-rwx $cmdfile
 
         if [ $start_new_terminal = yes ] ; then
@@ -108,10 +106,11 @@ EOF
 }
 
 Usage() {
-    cat <<EOF
+    cat <<EOF >&2
 Usage:    $progname [options]
 Options:  -h, --help          This help.
-          -b, --backup        Save the old files (in view, merge, and overwrite modes) with .bak.
+          -b, --backup        Save the old files (in view, merge, and overwrite modes) with .bak. Default.
+          --no-backup         The opposite of option --backup.
           --nt                Starts a new terminal for the output (used by the Welcome app).
           --quiet             Do not display messages.
           --msg-types=WHAT    Selects how informational messages will be displayed.
@@ -152,9 +151,9 @@ Main()
     local start_new_terminal=no
     local indent=""
     local user_wants=both
-    local BACKUP_OVERWRITE=no
-    local BACKUP_VIEW=no
-    local BACKUP_MERGE=no
+    local -r backup_default=yes
+    local backup_all=$backup_default
+    local -r backupdir="/etc/.EOS_BACKUPDIR"
     local -r extra_conf=/etc/$progname.conf
     local arg
 
@@ -185,10 +184,8 @@ Main()
     while [ "$1" ] ; do
         case "$1" in
             -h | --help)   Usage OK ;;
-            -b | --backup) BACKUP_OVERWRITE=yes
-                           BACKUP_VIEW=yes
-                           BACKUP_MERGE=yes
-                           ;;
+            -b | --backup) backup_all=yes ;;
+            --no-backup)   backup_all=no ;;
             --indent=*)    indent="${1#*=}" ;;
             --nt)          start_new_terminal=yes ;;
             --quiet)       ;; # user_wants="" ;;
