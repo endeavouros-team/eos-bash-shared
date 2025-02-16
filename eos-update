@@ -172,7 +172,7 @@ OptionCheck() {
 Options() {
     local opts
     local lopts="aur,clear-databases,descriptions,dump-options,fast,keyrings-reset,nvidia,no-keyring,no-sync,helper:"
-    lopts+=",min-free-bytes:,pacdiff,paru,yay,pacman,help"
+    lopts+=",min-free-bytes:,pacdiff,paru,yay,pacman,help,run-mode:"
     lopts+=",show-only-fixed,show-upstream-news,check-mirrors-arch,check-mirrors-eos,check-mirrors,edit-mirrorlist:"
     local sopts="dh"
 
@@ -203,6 +203,7 @@ Options() {
             --no-sync)                           sync=":" ;;
             --keyrings-reset)                    ResetKeyrings ;;
             --clear-databases)                   ClearDatabases ;;
+            --run-mode)                          mode="$2"; shift ;;
             --min-free-bytes)                    min_free_bytes="$2" ; shift ;;
             --helper)                            SetHelper "$2" ; shift ;;
             --aur)                               SetHelper; eufast_opt+=" $1" ;;
@@ -263,7 +264,7 @@ Options:
                           Note: only x86_64 hardware is supported.
   --check-mirrors-eos     Check file $eml for unsupported mirrors.
   --check-mirrors-arch    Check file $aml for unsupported mirrors.
-  --edit-mirrorlist       Edit chosen mirrorlist file. Supported: arch, endeavouros. No default.
+  --edit-mirrorlist <val> Edit chosen mirrorlist file. Supported values: arch, endeavouros. No default.
   --fast                  Do a *fast check* for updates in order to reduce the amount of network traffic.
                           Note that the fast check
                             * applies to only updates on EndeavourOS and Arch repos, and optionally on AUR
@@ -277,18 +278,25 @@ Options:
                           Use this only if keyring issues constantly make system update fail.
   --no-keyring            Do not try to update keyrings first.
   --no-sync               Do not run 'sync' after update.
+  --run-mode <val>        Specifies the mode how the updating commands will be executed.
+                          Supported values:
+                              plain   Use current privileges. Uses 'sudo' for commands that need it.
+                                      If $progname was executed as root, mode changes from plain to login.
+                              root    Use elevated privileges. Impersonate $LOGNAME for the AUR helper.
+                              login   Use elevated privileges. Login as $LOGNAME for the AUR helper.
+                          Default: plain.
   --show-only-fixed       Show only packages that have already been fixed (runs: arch-audit -u) and exit.
   --show-upstream-news    Show the news page of the upstream site and exit.
   --pacdiff		  Run eos-pacdiff in the end of $progname. See also EOS_UPDATE_PACDIFFER
   			  in file /etc/eos-script-lib-yad.conf.
-  --helper                AUR helper name. Supported: yay, paru, pacman.
+  --helper <val>          AUR helper name. Supported values: yay, paru, pacman.
                           Default: pacman
                           Other AUR helpers supporting option -Sua like yay should work as well.
   --paru                  Same as --helper=paru.
   --yay                   Same as --helper=yay.
   --aur                   Uses the AUR helper configured in /etc/eos-script-lib-yad.conf.
   --pacman                Same as --helper=pacman. Default. (Note: pacman does not support AUR directly).
-  --min-free-bytes        Minimum amount of free space (in bytes) that the root partition should have
+  --min-free-bytes <val>  Minimum amount of free space (in bytes) that the root partition should have
                           before updating. Otherwise a warning message will be displayed.
                           Default: $min_free_bytes
 
@@ -331,10 +339,17 @@ DiskSpace() {
 echo2blue()  { echo2 "${BLUE}$1${RESET}" ; }
 echo2green() { echo2 "${GREEN}$1${RESET}" ; }
 
+Cleanup() {
+    [ "$cmdfile" ] && rm -f -- "$cmdfile"
+}
+
 Main() {
+    local cmdfile=""
+    trap Cleanup EXIT
+
     local progname="${0##*/}"
-    source /usr/share/endeavouros/scripts/eos-script-lib-yad || return 1
-    source /usr/share/endeavouros/scripts/translations.bash || return 1
+    source /usr/share/endeavouros/scripts/eos-script-lib-yad || exit 1
+    source /usr/share/endeavouros/scripts/translations.bash || exit 1
 
     _init_translations
     
@@ -343,7 +358,7 @@ Main() {
 
     local lock=/var/lib/pacman/db.lck
     local rmopt=f
-
+    local mode=plain
     local pacdiffer=""                            # default = "" because pacdiff can change critical files
     local -r pacdiffer_cmd_default="eos-pacdiff --quiet"
     local subopts=()
@@ -373,6 +388,10 @@ Main() {
         esac
     fi
 
+    if [ $EUID -eq 0 ] && [ $mode = plain ] ; then    # mode can change based on current privileges
+        mode=login
+    fi
+
     [ "$EOS_UPDATE_PACDIFFER" ] && pacdiffer="$EOS_UPDATE_PACDIFFER"
 
     [ $descriptions  = yes ] && subopts+=(--descriptions)
@@ -386,7 +405,7 @@ Main() {
     if [ -e $lock ] && fuser $lock &>/dev/null ; then
         rmopt=i
     fi
-    local cmdfile=$(mktemp "$HOME/.$progname.helper.XXX")
+
     case "$helper" in
 	pacman)
             echo2green "Updating native apps..."
@@ -398,17 +417,25 @@ Main() {
 	    ;;
     esac
     chmod u+x,go-rwx "$cmdfile"
-    "$cmdfile"
-    rm -f "$cmdfile"
+
+    case "$mode" in
+        plain)         "$cmdfile" ;;
+        login | root)  $EOS_ROOTER "$cmdfile" ;;
+        *)             DIE "unsupported value for option --run-mode" ;;
+    esac
+    Cleanup
 }
 
 CreateCmds() {
     local helper2="$1"
-    [ "$helper2" ] || helper2=":"
+    [ "$helper2" ] || helper2="true"
+
+    cmdfile=$(mktemp "$HOME/.$progname.helper.XXX")
+
     cat <<EOF > "$cmdfile"
 #!/bin/bash
 
-eos_update_sudofunc() {
+eos_update_as_user() {
     sudo rm -$rmopt $lock                 || return
     if [ ! -e $lock ] ; then
         sudo pacman -Sy                   || return
@@ -419,7 +446,23 @@ eos_update_sudofunc() {
         $sync
     fi
 }
-eos_update_sudofunc
+eos_update_as_root() {
+    local -r so="$1"
+    rm -$rmopt $lock                        || return
+    if [ ! -e $lock ] ; then
+        pacman -Sy                          || return
+        ${progname}-extras ${subopts[*]}    || return
+        pacman -Su                          || return
+        /bin/sudo $so --user $LOGNAME $helper2  || return
+        $pacdiffer
+        $sync
+    fi
+}
+case "$mode" in
+    plain) eos_update_as_user ;;
+    root)  eos_update_as_root ;;
+    login) eos_update_as_root --login ;;
+esac
 EOF
 }
 
