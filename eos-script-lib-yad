@@ -518,7 +518,8 @@ eos_yad_RunCmdTermBashOpt() {  # like eos_yad_RunCmdTermBash, but supports certa
             esac
             ;;
     esac
-    echo "rm -f $tmpfile"                                >> "$tmpfile"                    # this may cause issues in very special cases!
+    echo "sleep 0.5"         >> "$tmpfile"
+    echo "rm -f $tmpfile"    >> "$tmpfile"                    # this may cause issues in very special cases!
 
     chmod +x "$tmpfile"
 
