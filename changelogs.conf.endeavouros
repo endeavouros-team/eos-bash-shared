@@ -15,7 +15,7 @@ PKG_CHANGELOGS+=(
     bashdb                            "https://aur.archlinux.org/cgit/aur.git/log/?h=bashdb"
     calamares                         "https://github.com/endeavouros-team/PKGBUILDS/commits/master/calamares|https://github.com/endeavouros-team/calamares/commits"
     ckbcomp                           "https://salsa.debian.org/installer-team/console-setup/commits"
-    downgrade                         "https://github.com/archlinux-downgrade/downgrade/blob/main/CHANGELOG.md"
+    downgrade                         "https://github.com/archlinux-downgrade/downgrade/commits"
     endeavouros-branding              "https://github.com/endeavouros-team/Branding/commits"
     endeavouros-keyring               "https://github.com/endeavouros-team/keyring/commits"
     endeavouros-konsole-colors        "https://github.com/endeavouros-team/Branding/commits/main/terminal-color-schemes/konsole"
