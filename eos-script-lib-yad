@@ -274,6 +274,15 @@ eos_select_browser() {
     eos_yad_WARN "${FUNCNAME[0]}: cannot find a browser"
 }
 
+eos_workaround_fix_critical_urgency() {
+    # libnotify 0.8.4-1 workaround:
+    # For notification's critical urgency,
+    # value 0 for --expire-time does not work, any other value works (?)
+    # or don't use --expire-time at all.
+
+    [ "$urgency" = critical ] || cmd+=(--expire-time="$expiretime")
+}
+
 eos_notification() {   # sending notification to the current user
     local icon="$1"
     local urgency="$2"        # low, normal, critical
@@ -282,17 +291,19 @@ eos_notification() {   # sending notification to the current user
     local summary="$5"
     local body="$6"
     local action="$7"
-    [ -n "$urgency" ] || urgency=normal
+
+    [ "$urgency" ] || urgency=normal
 
     local cmd=(
         notify-send
         --icon="$icon"
         --urgency="$urgency"
-        --expire-time="$expiretime"
         --app-name="$appname"
         "$summary"
 	"$body"
     )
+    eos_workaround_fix_critical_urgency
+
     if [ -n "$action" ] ; then
         cmd+=(--action="$action")
     fi
@@ -341,11 +352,12 @@ eos_notification_all() {   # sending notification to all users
             notify-send
             --icon="$icon"
             --urgency="$urgency"
-            --expire-time="$expiretime"
             --app-name="$appname"
             "'$summary'"
 	    "'$body'"
         )
+        eos_workaround_fix_critical_urgency
+
         /usr/bin/su "$user" -c "${cmd[*]}"
     done
 }
