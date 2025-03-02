@@ -162,6 +162,29 @@ ClearDatabases() {
     exit 0
 }
 
+CheckReposPacmanConf() {
+    local problem_repos=(
+        community
+        community-testing
+        testing
+        testing-debug
+        staging
+        staging-debug
+    )
+    local tobefixed=()
+    local -r file=/etc/pacman.conf
+    for item in "${problem_repos[@]}" ; do
+        if [ "$(grep "^\[$item\]" $file)" ] ; then
+            tobefixed+=("[$item]")
+        fi
+    done
+    if [ "$tobefixed" ] ; then
+        echo2red "==> $progname: error: the following repo definitions must be removed from $file:"
+        printf "    %s\n" "${tobefixed[@]}"
+        exit 1
+    fi
+}
+
 OptionCheck() {
     case "$1" in
         --nvidia) IsSupportedOS "$1" || return 1 ;;
@@ -337,6 +360,7 @@ DiskSpace() {
 }
 
 echo2blue()  { echo2 "${BLUE}$1${RESET}" ; }
+echo2red()   { echo2 "${RED}$1${RESET}" ; }
 echo2green() { echo2 "${GREEN}$1${RESET}" ; }
 
 Cleanup() {
@@ -344,10 +368,18 @@ Cleanup() {
 }
 
 Main() {
+    local progname="${0##*/}"
     local cmdfile=""
+    local -r RED=$'\e[0;91m'
+    local -r GREEN=$'\e[0;92m'
+    local -r BLUE=$'\e[0;94m'
+    local -r MAGENTA=$'\e[0;95m'
+    local -r RESET=$'\e[0m'
+
+    CheckReposPacmanConf
+
     trap Cleanup EXIT
 
-    local progname="${0##*/}"
     source /usr/share/endeavouros/scripts/eos-script-lib-yad || exit 1
     source /usr/share/endeavouros/scripts/translations.bash || exit 1
 
@@ -372,12 +404,6 @@ Main() {
     local eufast_opt="--arch --endeavouros"
     local -r eml=/etc/pacman.d/endeavouros-mirrorlist
     local -r aml=/etc/pacman.d/mirrorlist
-
-    local -r RED=$'\e[0;91m'
-    local -r GREEN=$'\e[0;92m'
-    local -r BLUE=$'\e[0;94m'
-    local -r MAGENTA=$'\e[0;95m'
-    local -r RESET=$'\e[0m'
 
     Options "$@"
 
