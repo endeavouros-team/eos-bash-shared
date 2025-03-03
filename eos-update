@@ -157,8 +157,19 @@ ResetKeyrings() {
 }
 
 ClearDatabases() {
-    Cmd sudo rm /var/lib/pacman/sync/*
+    Cmd sudo rm -r /var/lib/pacman/sync
     echo2 "Package databases cleared."
+    exit 0
+}
+CheckPackageDatabases() {
+    local -r dir=/var/lib/pacman/sync
+    local -r out="$(file $dir/*.{db,files} | grep -Pv "(gzip|Zstandard|XZ) compressed data")"
+    if [ "$out" ] ; then
+        echo2red "$out"
+        echo2 -e "==> one or more files $dir/*.{db,files} corrupted.\n    '$progname --clear-databases' may fix it."
+        exit 1
+    fi
+    echo2 "==> package database: success, compressed data as expected."
     exit 0
 }
 
@@ -180,7 +191,7 @@ CheckReposPacmanConf() {
     done
     if [ "$tobefixed" ] ; then
         echo2red "==> $progname: error: the following repo definitions must be removed from $file:"
-        printf "    %s\n" "${tobefixed[@]}"
+        printf   "    %s\n" "${tobefixed[@]}" >&2
         exit 1
     fi
 }
@@ -197,6 +208,7 @@ Options() {
     local lopts="aur,clear-databases,descriptions,dump-options,fast,keyrings-reset,nvidia,no-keyring,no-sync,helper:"
     lopts+=",min-free-bytes:,pacdiff,paru,yay,pacman,help,run-mode:"
     lopts+=",show-only-fixed,show-upstream-news,check-mirrors-arch,check-mirrors-eos,check-mirrors,edit-mirrorlist:"
+    lopts+=",check-databases"
     local sopts="dh"
 
     opts="$(LANG=C /usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
@@ -226,6 +238,7 @@ Options() {
             --no-sync)                           sync=":" ;;
             --keyrings-reset)                    ResetKeyrings ;;
             --clear-databases)                   ClearDatabases ;;
+            --check-databases)                   CheckPackageDatabases ;;
             --run-mode)                          mode="$2"; shift ;;
             --min-free-bytes)                    min_free_bytes="$2" ; shift ;;
             --helper)                            SetHelper "$2" ; shift ;;
@@ -295,6 +308,7 @@ Options:
                               $progname without option --fast
   --descriptions, -d      Show the descriptions of the packages to be updated. Note: AUR not supported.
   --nvidia                Check also nvidia driver vs. kernel updates. Useful only with the Nvidia GPU.
+  --check-databases       Check for the package database being corrupted or not.
   --clear-databases       Clears package database files.
                           Use this only if package database issues constantly make system update fail.
   --keyrings-reset        Resets Arch and EndeavourOS keyrings.
@@ -359,9 +373,9 @@ DiskSpace() {
     fi
 }
 
-echo2blue()  { echo2 "${BLUE}$1${RESET}" ; }
-echo2red()   { echo2 "${RED}$1${RESET}" ; }
-echo2green() { echo2 "${GREEN}$1${RESET}" ; }
+echo2blue()  { echo2 -e "${BLUE}$1${RESET}" ; }
+echo2red()   { echo2 -e "${RED}$1${RESET}" ; }
+echo2green() { echo2 -e "${GREEN}$1${RESET}" ; }
 
 Cleanup() {
     [ "$cmdfile" ] && rm -f -- "$cmdfile"
@@ -428,7 +442,10 @@ Main() {
 
     DiskSpace
 
-    if [ -e $lock ] && fuser $lock &>/dev/null ; then
+    if [ -e $lock ] && sudo fuser $lock &>/dev/null ; then
+        echo2red "==> File $lock is in use.\n    Check if another process is still managing packages."
+        exit 1
+        # DIE "file $lock is in use. Check if another process is still managing packages."
         rmopt=i
     fi
 
