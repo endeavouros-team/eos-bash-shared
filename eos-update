@@ -174,7 +174,7 @@ CheckPackageDatabases() {
 }
 
 CheckReposPacmanConf() {
-    local problem_repos=(
+    local problem_repos=(   # these should be removed
         community
         community-testing
         testing
@@ -182,18 +182,32 @@ CheckReposPacmanConf() {
         staging
         staging-debug
     )
-    local tobefixed=()
+    local needed_repos=(    # these should always be included for EndeavourOS
+        endeavouros
+        core
+        extra
+    )
+    local toberemoved=() tobeadded=()
     local -r file=/etc/pacman.conf
+    local stop=no
+
     for item in "${problem_repos[@]}" ; do
-        if [ "$(grep "^\[$item\]" $file)" ] ; then
-            tobefixed+=("[$item]")
-        fi
+        [ "$(grep "^\[$item\]" $file)" ] && toberemoved+=("[$item]")
     done
-    if [ "$tobefixed" ] ; then
-        echo2red "==> $progname: error: the following repo definitions must be removed from $file:"
-        printf   "    %s\n" "${tobefixed[@]}" >&2
-        exit 1
+    for item in "${needed_repos[@]}" ; do
+        [ "$(grep "^\[$item\]" $file)" ] || tobeadded+=("[$item]")
+    done
+    if [ "$tobeadded" ] ; then
+        echo2red "==> $progname: error: the following repo definitions must be added to $file:"
+        printf2  "    %s\n" "${tobeadded[@]}"
+        stop=yes
     fi
+    if [ "$toberemoved" ] ; then
+        echo2red "==> $progname: error: the following repo definitions must be removed from $file:"
+        printf2  "    %s\n" "${toberemoved[@]}"
+        stop=yes
+    fi
+    [ $stop = yes ] && exit 1
 }
 
 OptionCheck() {
