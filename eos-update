@@ -341,12 +341,12 @@ Options:
   --pacdiff		  Run eos-pacdiff in the end of $progname. See also EOS_UPDATE_PACDIFFER
   			  in file /etc/eos-script-lib-yad.conf.
   --helper <val>          AUR helper name. Supported values: yay, paru, pacman.
-                          Default: pacman
+                          Default: The AUR helper configured in /etc/eos-script-lib-yad.conf.
                           Other AUR helpers supporting option -Sua like yay should work as well.
   --paru                  Same as --helper=paru.
   --yay                   Same as --helper=yay.
-  --aur                   Uses the AUR helper configured in /etc/eos-script-lib-yad.conf.
-  --pacman                Same as --helper=pacman. Default. (Note: pacman does not support AUR directly).
+  --aur                   Uses the AUR helper configured in /etc/eos-script-lib-yad.conf. Default.
+  --pacman                Same as --helper=pacman. (Note: pacman does not support AUR directly).
   --min-free-bytes <val>  Minimum amount of free space (in bytes) that the root partition should have
                           before updating. Otherwise a warning message will be displayed.
                           Default: $min_free_bytes
@@ -413,7 +413,7 @@ Main() {
 
     _init_translations
     
-    local helper="pacman"
+    local helper=${EOS_AUR_HELPER}
     local min_free_bytes=$((1000 * 1000 * 1000))  # default: 1 GB
 
     local lock=/var/lib/pacman/db.lck
