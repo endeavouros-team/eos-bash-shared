@@ -413,7 +413,11 @@ Main() {
 
     _init_translations
     
-    local helper=${EOS_AUR_HELPER}
+    if command -v ${EOS_AUR_HELPER} > /dev/null; then
+        local helper=${EOS_AUR_HELPER}
+    else
+        local helper=pacman
+    fi
     local min_free_bytes=$((1000 * 1000 * 1000))  # default: 1 GB
 
     local lock=/var/lib/pacman/db.lck
