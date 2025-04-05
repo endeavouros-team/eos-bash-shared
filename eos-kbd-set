@@ -1,13 +1,21 @@
 #!/bin/bash
 
 Main() {
-    local country=$(show-location-info country)
-    country=${country,,}   # to lowercase
-    case "$country" in
-        'de'|'fi'|'se')
-            setxkbmap $country
-            # local progname=${0##*/}
-            # echo "Setting keyboard layout to: $country" > /tmp/$progname.log
+    # local -r progname=${0##*/}
+    case "$XDG_SESSION_TYPE" in
+        x11)
+            local country=$(show-location-info country)
+            case "${country,,}" in
+                de|fi|se)
+                    setxkbmap $country
+                    ;;
+            esac
+            ;;
+        wayland)
+            # Wayland not supported currently.
+            # Possible ideas:
+            # - somewhere define: export XKB_DEFAULT_LAYOUT={de|fi|sv}
+            # - in some cases:    export XKB_DEFAULT_OPTIONS=compose:ralt,ctrl:nocaps
             ;;
     esac
 }
