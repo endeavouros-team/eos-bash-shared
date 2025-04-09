@@ -210,6 +210,19 @@ CheckReposPacmanConf() {
     [ $stop = yes ] && exit 1
 }
 
+FaillockCheck() {
+    if [ $faillockcheck = yes ] ; then
+        if [ $(LANG=C faillock --user $LOGNAME | grep -EA1 "^When[ ]+Type[ ]+Source" | wc -l) -gt 1 ] ; then
+            sleep 1
+            read -p "Info: elevating privileges is locked, press ENTER to unlock, or Ctrl-C to quit: " >&2
+            case "$?" in
+                0) faillock --user $LOGNAME --reset ; sleep 2 ;;
+                *) exit 0 ;;
+            esac
+        fi
+    fi
+}
+
 OptionCheck() {
     case "$1" in
         --nvidia) IsSupportedOS "$1" || return 1 ;;
@@ -220,7 +233,7 @@ OptionCheck() {
 Options() {
     local opts
     local lopts="aur,clear-databases,descriptions,dump-options,fast,keyrings-reset,nvidia,no-keyring,no-sync,helper:"
-    lopts+=",min-free-bytes:,pacdiff,paru,yay,pacman,help,run-mode:"
+    lopts+=",min-free-bytes:,pacdiff,paru,yay,pacman,help,run-mode:,faillock-check"
     lopts+=",show-only-fixed,show-upstream-news,check-mirrors-arch,check-mirrors-eos,check-mirrors,edit-mirrorlist:"
     lopts+=",check-databases"
     local sopts="dh"
@@ -249,6 +262,7 @@ Options() {
             --nvidia)                            OptionCheck "$1" && nvidia=yes ;;
             --no-keyring)                        keyring=no ;;
             --descriptions | -d)                 descriptions=yes ;;
+            --faillock-check)                    faillockcheck=yes ;;
             --no-sync)                           sync=":" ;;
             --keyrings-reset)                    ResetKeyrings ;;
             --clear-databases)                   ClearDatabases ;;
@@ -426,6 +440,7 @@ Main() {
     local keyring=yes                             # user may disable keyring check with --no-keyring
     local nvidia=no                               # user may enable Nvidia check with --nvidia
     local descriptions=no                         # user may enable showing descriptions of the package updates
+    local faillockcheck=no
     local nvidia_opt=""
     local sync="sync"
     local eufast=no
@@ -474,6 +489,7 @@ Main() {
 	    ;;
     esac
     chmod u+x,go-rwx "$cmdfile"
+    FaillockCheck
 
     case "$mode" in
         plain)         "$cmdfile" ;;
