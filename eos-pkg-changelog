@@ -41,7 +41,14 @@ DumpOptions() {
 }
 SourceClFile() {
     if [ "$clfile" ] ; then
-        [ -e "$clfile" ] || DIE "given config file '$clfile' not found"
+        if [ ! -e "$clfile" ] ; then
+            if [ ! -e "/etc/changelogs.conf.$clfile" ] ; then
+                DIE "given config file '$clfile' not found"
+            else
+                clfile="/etc/changelogs.conf.$clfile"
+                echo "==> found $clfile" >&2
+            fi
+        fi
         source "$clfile" || DIE "reading $clfile failed"      # get new PKG_CHANGELOGS and REPONAME
         return 0
     fi

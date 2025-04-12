@@ -11,6 +11,18 @@ _eos-pkg-changelog_()
     local cur prev #words cword split
     _init_completion -s || return
 
-    _eos-pkg-changelog_complete "$(eos-pkg-changelog --parameters)"
+    case "$prev" in
+        -c | --clfile)
+            local files=(/etc/changelogs.conf.*)
+            _eos-pkg-changelog_complete "${files[*]}"
+            ;;
+        *)
+            case "$cur" in
+                *)
+                    _eos-pkg-changelog_complete "$(eos-pkg-changelog --parameters)"
+                    ;;
+            esac
+            ;;
+    esac
 }
 complete -F _eos-pkg-changelog_    eos-pkg-changelog
