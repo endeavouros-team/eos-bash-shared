@@ -1,8 +1,0 @@
-#!/bin/bash
-#
-# Parameter converter in the EOS installer between
-# - the eos_script module of calamares
-# - user_commands.bash
-# For Gemini and later.
-#
- /bin/bash /tmp/user_commands.bash "${1#*=}"        # skip "--user="
