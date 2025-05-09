@@ -49,7 +49,7 @@ PacdiffCmd() {
             vim) differ+=" -d" ;;
         esac
 
-        msg="Starting pacdiff & $differ as root ..."
+        msg="Starting pacdiff with $differ diff support..."
         prompt="echo '$msg'"
 
         local cmdfile
@@ -59,36 +59,36 @@ PacdiffCmd() {
         cat <<EOF > $cmdfile
 #!/bin/bash
 EOF
+
+        if DoesSudo ; then
+            doas="/usr/bin/sudo"
+        fi
+
         if [ $backup_all = yes ] ; then
             local -r pacnews=($(DIFFPROG=diff /usr/bin/pacdiff -o))
             local -r time=$(date +%Y%m%d-%H%M%S)
 
             cat <<EOF >> $cmdfile
 echo "==> Creating backups under folder $backupdir" >&2
-/usr/bin/mkdir -p $backupdir
-/usr/bin/chmod go-rwx $backupdir
+$doas /usr/bin/mkdir -p $backupdir
+$doas /usr/bin/chmod go-rwx $backupdir
 EOF
            local bf bu
            for bf in "${pacnews[@]}" ; do
                bf=${bf%.*}                                          # e.g. /etc/akm.conf
                bu=${bf##*/}.$time                                   # e.g. akm.conf.20250215-170300
-               echo "/usr/bin/cp $bf $backupdir/$bu" >> $cmdfile
+               echo "$doas /usr/bin/cp $bf $backupdir/$bu" >> $cmdfile
            done
         fi
 
-        if DoesSudo ; then
-            doas="/usr/bin/sudo"
-            echo "DIFFPROG=\"/usr/bin/$differ\" /usr/bin/pacdiff 2>/dev/null" >> $cmdfile
-        else
-            echo "DIFFPROG=\"/usr/bin/$differ\" $doas -p /usr/bin/pacdiff 2>/dev/null" >> $cmdfile
-        fi
+        echo "DIFFPROG=\"/usr/bin/$differ\" /usr/bin/pacdiff -s 2>/dev/null" >> $cmdfile
 
         chmod u+x,go-rwx $cmdfile
 
         if [ $start_new_terminal = yes ] ; then
-            RunInTerminal "$prompt ; $doas $cmdfile"
+            RunInTerminal "$prompt ; $cmdfile"
         else
-            bash -c "$prompt ; $doas $cmdfile"
+            bash -c "$prompt ; $cmdfile"
         fi
         rm -f $cmdfile
         return $diffs_yes
