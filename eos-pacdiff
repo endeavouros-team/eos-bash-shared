@@ -41,59 +41,50 @@ DoesSudo()    { groups | grep -Pw 'root|wheel' >/dev/null ; }
 
 PacdiffCmd() {
     local differ="$1"
-    local prompt=""
-    local msg=""
-    
+
     if HasPacdiffs ; then
         case "$differ" in            # some differs may need options
             vim) differ+=" -d" ;;
         esac
-
-        msg="Starting pacdiff & $differ as root ..."
-        prompt="echo '$msg'"
-
+        local -r doas="/usr/bin/sudo"
+        local -r compress="/usr/bin/gzip"   # compress with "gzip" or "zstd --rm"
         local cmdfile
-        cmdfile=$(mktemp "$HOME/.tmp.$progname.tmpXXX") || DIE $LINENO "creating a temporary file under $HOME failed"        # don't mount $HOME with noexec!
-        local doas="/usr/bin/su-c_wrapper"
+        cmdfile=$(mktemp "$HOME/.tmp.$progname.tmpXXX") || DIE "creating a temporary file under $HOME failed"        # don't mount $HOME with noexec!
 
         cat <<EOF > $cmdfile
 #!/bin/bash
+echo "==> starting pacdiff with '$differ' diff support..." >&2
 EOF
         if [ $backup_all = yes ] ; then
             local -r pacnews=($(DIFFPROG=diff /usr/bin/pacdiff -o))
             local -r time=$(date +%Y%m%d-%H%M%S)
 
             cat <<EOF >> $cmdfile
-echo "==> Creating backups under folder $backupdir" >&2
-/usr/bin/mkdir -p $backupdir
-/usr/bin/chmod go-rwx $backupdir
+echo "  -> creating backups under folder $backupdir" >&2
+$doas /usr/bin/mkdir -p $backupdir
+$doas /usr/bin/chmod go-rwx $backupdir
 EOF
-           local bf bu
-           for bf in "${pacnews[@]}" ; do
-               bf=${bf%.*}                                          # e.g. /etc/akm.conf
-               bu=${bf##*/}.$time                                   # e.g. akm.conf.20250215-170300
-               echo "/usr/bin/cp $bf $backupdir/$bu" >> $cmdfile
-           done
+            local bf bu
+            for bf in "${pacnews[@]}" ; do
+                bf=${bf%.*}                                          # e.g. /etc/akm.conf
+                bu=${bf##*/}.$time                                   # e.g. akm.conf.20250215-170300
+                echo "$doas /usr/bin/cp $bf $backupdir/$bu" >> $cmdfile
+                echo "$doas $compress $backupdir/$bu"       >> $cmdfile
+            done
         fi
 
-        if DoesSudo ; then
-            doas="/usr/bin/sudo"
-            echo "DIFFPROG=\"/usr/bin/$differ\" /usr/bin/pacdiff 2>/dev/null" >> $cmdfile
-        else
-            echo "DIFFPROG=\"/usr/bin/$differ\" $doas -p /usr/bin/pacdiff 2>/dev/null" >> $cmdfile
-        fi
-
+        echo "DIFFPROG=\"/usr/bin/$differ\" /usr/bin/pacdiff -s 2>/dev/null" >> $cmdfile
         chmod u+x,go-rwx $cmdfile
 
         if [ $start_new_terminal = yes ] ; then
-            RunInTerminal "$prompt ; $doas $cmdfile"
+            RunInTerminal "$cmdfile"
         else
-            bash -c "$prompt ; $doas $cmdfile"
+            bash -c "$cmdfile"
         fi
         rm -f $cmdfile
         return $diffs_yes
     else
-        msg="$progname: nothing to do."
+        local msg="$progname: nothing to do."
         if UserWants cli ; then
             echo "$indent$msg" >&2
         fi
@@ -128,8 +119,8 @@ EOF
 }
 
 DIE() {
-    local linenr="$1"
-    local msg="$2"
+    local msg="$1"
+    local linenr="${BASH_LINENO[0]}"
 
     case "$linenr" in
         [1-9]*) linenr=" (line $linenr)" ;;
@@ -156,6 +147,8 @@ Main()
     local -r backupdir="/etc/.EOS_BACKUPDIR"
     local -r extra_conf=/etc/$progname.conf
     local arg
+
+    DoesSudo || DIE "sorry, user needs to have proper rights for 'sudo'"
 
     # pre-handling of certain options
     for arg in "$@" ; do
@@ -190,7 +183,7 @@ Main()
             --nt)          start_new_terminal=yes ;;
             --quiet)       ;; # user_wants="" ;;
             --msg-types=*) ;; # user_wants="${1#*=}" ;;             # cli gui both ""
-            -*)            DIE $LINENO "option '$1' not supported." ;;
+            -*)            DIE "option '$1' not supported." ;;
         esac
         shift
     done
