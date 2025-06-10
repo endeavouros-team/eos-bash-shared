@@ -693,17 +693,9 @@ eos_yad__detectDE()
     fi
 
     if [ -z "$_desktop_" ] ; then
-        # neofetch fails: Enlightenment, openbox
-        # neofetch differs: KDE -> plasma (with DESKTOP_SESSION=openbox-kde and DESKTOP_SESSION=plasma)
-        if [ -x /usr/bin/neofetch ] ; then
-            # _desktop_="$(neofetch --enable de --de_version off | awk '{print $NF}' | tr '[:upper:]' '[:lower:]')"
-            _desktop_=$(neofetch --enable de --de_version off)    # example: de: Plasma
-            _desktop_=${_desktop_#* }                                    # drop all before first space
-            _desktop_=${_desktop_% *}                                    # drop all before last space
-            _desktop_=${_desktop_,,}                                     # make all lowercase
-            case "$_desktop_" in
-                plasma) _desktop_=kde ;;
-            esac
+        if [ -x /usr/bin/inxi ] ; then
+            _desktop_=$(echo $(inxi -Sc0) | sed -E 's|.* Desktop\: ([^ ]*) .*|\1|')
+            _desktop_=${_desktop_,,}                                                  # make all lowercase
         fi
     fi
 
