@@ -2,8 +2,7 @@
 
 Main() {
     echo "Session type: $XDG_SESSION_TYPE"
-    local country=$(show-location-info country)
-    country=${country,,}  # to lowercase
+    local country=$(show-location-info --tolower country)
     echo "Detected country: $country"
 
     case "$XDG_SESSION_TYPE" in
@@ -11,13 +10,14 @@ Main() {
             case "$country" in
                 us | gb | fr | it | es | de | fi | jp | cn | se)
                     echo "Setting keymap: $country"
-                    setxkbmap "$country"
                     ;;
                 *)
-                    echo "Country '$country' not handled, falling back to 'us'"
-                    setxkbmap us
+                    local c="$country"
+                    country=us
+                    echo "Country '$c' not handled, falling back to '$country'"
                     ;;
             esac
+            setxkbmap "$country"
             ;;
         wayland)
             echo "Wayland not supported"
