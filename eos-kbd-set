@@ -9,7 +9,7 @@ Main() {
     case "$XDG_SESSION_TYPE" in
         x11)
             case "$country" in
-                us | gb | fr | it | es | de | fi | jp | cn)
+                us | gb | fr | it | es | de | fi | jp | cn | se)
                     echo "Setting keymap: $country"
                     setxkbmap "$country"
                     ;;
