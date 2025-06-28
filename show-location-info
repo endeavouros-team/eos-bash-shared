@@ -120,7 +120,8 @@ Main() {
 
         # get and show the wanted location info
 
-        local output="$(LANG=C curl --fail -Lsm $timeout $url/$item)"
+        local output=""
+        output="$(LANG=C curl --fail -Lsm $timeout $url/$item)"
 
         if [ $? -eq 0 ] ; then
             if [ "$tolower" = "yes" ] ; then
