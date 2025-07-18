@@ -8,23 +8,22 @@
 
 #################################################################################
 EOS_SCRIPTS_YAD=/usr/share/endeavouros/scripts/eos-script-lib-yad
-source $EOS_SCRIPTS_YAD || {
-    echo "ERROR: cannot read $EOS_SCRIPTS_YAD" >&2
-    exit 1
-}
-unset EOS_SCRIPTS_YAD
+if [ -e $EOS_SCRIPTS_YAD ] ; then
+    source $EOS_SCRIPTS_YAD
+    unset EOS_SCRIPTS_YAD
 
-export -f eos_yad
-export -f eos_yad_terminal
-export -f eos_yad_check_internet_connection
-export -f eos_yad_GetArgVal
-export -f eos_yad_RunCmdTermBash
-export -f eos_yad_problem
-export -f eos_yad_DIE
-export -f eos_yad_WARN
-export -f eos_yad__detectDE
-export -f eos_yad_GetDesktopName
-export -f eos_GetArch
+    export -f eos_yad
+    export -f eos_yad_terminal
+    export -f eos_yad_check_internet_connection
+    export -f eos_yad_GetArgVal
+    export -f eos_yad_RunCmdTermBash
+    export -f eos_yad_problem
+    export -f eos_yad_DIE
+    export -f eos_yad_WARN
+    export -f eos_yad__detectDE
+    export -f eos_yad_GetDesktopName
+    export -f eos_GetArch
+fi
 #################################################################################
 
 Monospaced() { printf "<tt>%s</tt>" "$1" ; }
@@ -47,6 +46,36 @@ DIE() {
     exit 1
 }
 
+FzfInFolders() {
+    cd "$picfolder"
+    local item="$PWD"
+
+    local header
+    local header_lines=(
+        "Navigation keys: Up/Down/PgUp/PgDn; ENTER=accept, ESC=quit"
+    )
+    header_lines=("" "${header_lines[@]}" "")        # add empty extra lines to separate header
+    printf -v header "%s\n" "${header_lines[@]}"
+    local fzf=(
+        fzf --tac --header="$header" --footer="Select wallpaper"
+    )
+
+    while true ; do
+        item="$(/bin/ls -1a --ignore=.[a-z]* --ignore=. --group-directories-first -F --color=auto "$item" | "${fzf[@]}")"
+        case "$item" in
+            "") exit 1 ;;
+            */) item="${item:: -1}" ;;
+        esac
+        item="$PWD/$item"
+        if [ -d "$item" ] ; then
+            cd "$item"
+            continue
+        fi
+        echo "$item"
+        break
+    done
+}
+
 WallpaperSelect() {
     local pic_count=$(/usr/bin/ls -l "$picfolder" | /usr/bin/wc -l)
     local height=$((pic_count * 36))
@@ -58,8 +87,12 @@ WallpaperSelect() {
         height=$hmin
     fi
 
-    eos_assert_deps $progname yad || exit 1
-    pic="$(eos_yad --file --filename="$picfolder" --width=700 --height=$height --title="Choose wallpaper file")"
+    # eos_assert_deps $progname yad || exit 1
+    if [ -x /bin/yad ] ; then
+        pic="$(eos_yad --file --filename="$picfolder" --width=700 --height=$height --title="Choose wallpaper file")"
+    else
+        pic="$(FzfInFolders)" || exit 1
+    fi
 }
 
 xfce4_set_wallpaper() {
@@ -369,16 +402,25 @@ PicDefault() {
     return 1  # not used
 }
 
+GetDE() {
+    if [ -x /bin/yad ] ; then
+        local de=$(eos_GetDeOrWm)
+    else
+        local de=$XDG_CURRENT_DESKTOP
+    fi
+    echo "$de"
+}
+
 Main()
 {
     local -r progname=${0##*/}
-    local -r DE="$(eos_GetDeOrWm)"
+    local -r DE="$(GetDE)"
     local -r picfolder=/usr/share/endeavouros/backgrounds
     local pic=""
     local pic_default=""
     local history_of_backgrounds="$HOME/.$progname.history-of-wallpapers"   # saves history of wallpaper file names
 
-    yad_missing_check $progname
+    # yad_missing_check $progname
 
     case "$DE" in
         XFCE) type xrandr >& /dev/null || DIE "Sorry, this implementation needs package 'xorg-xrandr' on Xfce." ;;
