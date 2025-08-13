@@ -163,6 +163,10 @@ Main()
     export -f eos_yad_nothing_todo
     AssignIconVariables_in_eos_bash_shared
 
+    case "$user_wants" in
+        gui|both) CanRunYad || user_wants=cli ;;
+    esac
+
     # read config file if it exists; command line options will override config file values
     if [ -e $extra_conf ] ; then
         case "$user_wants" in

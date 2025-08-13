@@ -41,6 +41,12 @@ source $translations_dir/translations.bash || {
     exit 1
 }
 
+CanRunYad() {
+    [ -x /bin/yad ]                   || return 1    # fail, yad not installed
+    [ -d /usr/include/webkitgtk-4.1 ] || return 2    # fail, webkit2gtk-4.1 not installed
+    return 0                                         # OK
+}
+
 yad_missing_check() {
     if [ "${EOS_YAD_MISSING_NOTIFICATION^^}" = "YES" ] ; then
         if ! which yad &>/dev/null ; then
