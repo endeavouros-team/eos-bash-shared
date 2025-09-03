@@ -404,6 +404,7 @@ eos_yad_terminal() {
         kitty
         terminology
         sakura
+        ghostty
     )
     local eos_terminal_prog=""
     local xx
