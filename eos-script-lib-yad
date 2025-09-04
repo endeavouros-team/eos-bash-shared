@@ -373,7 +373,7 @@ eos_yad_terminal() {
     if [ -r $conf ] ; then
         source $conf
         if [ -n "$EOS_YAD_TERMINAL" ] ; then
-            if [ -x /usr/bin/"$EOS_YAD_TERMINAL" ] || [ -x "$EOS_YAD_TERMINAL" ] ; then
+            if [ -x /usr/bin/"${EOS_YAD_TERMINAL%% *}" ] || [ -x "${EOS_YAD_TERMINAL%% *}" ] ; then  # allow options in $EOS_YAD_TERMINAL"
                 echo "$EOS_YAD_TERMINAL"
                 return
             fi
@@ -406,13 +406,11 @@ eos_yad_terminal() {
         sakura
         ghostty
     )
-    local eos_terminal_prog=""
     local xx
 
     for xx in "${suitable_terminals[@]}" ; do
-        if [ -x "/usr/bin/$xx" ] ; then
-            eos_terminal_prog="/usr/bin/$xx"
-            echo "$eos_terminal_prog"
+        if [ -x "/usr/bin/${xx%% *}" ] ; then      # allow options for the "suitable terminals"
+            echo "/usr/bin/$xx"
             return 0
         fi
     done
