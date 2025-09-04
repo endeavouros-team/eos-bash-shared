@@ -197,7 +197,7 @@ Main()
     # see /etc/eos-script-lib-yad.conf about EOS_WELCOME_PACDIFFERS
 
     for differ in "${EOS_WELCOME_PACDIFFERS[@]}" ; do
-        if [ -x /usr/bin/$differ ] ; then
+        if [ -x /usr/bin/${differ%% *} ] ; then
             PacdiffCmd "$differ"
             return $?
         fi
