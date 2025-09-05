@@ -165,7 +165,7 @@ CheckPackageDatabases() {
     local -r dir=/var/lib/pacman/sync
     local -r out="$(file $dir/*.{db,files} | grep -Pv "(gzip|Zstandard|XZ) compressed data")"
     if [ "$out" ] ; then
-        echo2red "$out"
+        echo2error "$out"
         echo2 -e "==> one or more files $dir/*.{db,files} corrupted.\n    '$progname --clear-databases' may fix it."
         exit 1
     fi
@@ -198,12 +198,12 @@ CheckReposPacmanConf() {
         [ "$(grep "^\[$item\]" $file)" ] || tobeadded+=("[$item]")
     done
     if [ "$tobeadded" ] ; then
-        echo2red "==> $progname: error: the following repo definitions must be added to $file:"
+        echo2error "==> $progname: error: the following repo definitions must be added to $file:"
         printf2  "    %s\n" "${tobeadded[@]}"
         stop=yes
     fi
     if [ "$toberemoved" ] ; then
-        echo2red "==> $progname: error: the following repo definitions must be removed from $file:"
+        echo2error "==> $progname: error: the following repo definitions must be removed from $file:"
         printf2  "    %s\n" "${toberemoved[@]}"
         stop=yes
     fi
@@ -307,6 +307,7 @@ Options() {
             --aur)                               SetHelper; eufast_opt+=" $1" ;;
             --paru | --yay | --pacman)           SetHelper "${1/--/}" ;;
 	    --pacdiff)                           pacdiffer="$pacdiffer_cmd_default" ;;
+            --other-updates)                     other_updates=yes ;;
             
             --) shift ; break ;;
         esac
@@ -381,6 +382,7 @@ Options:
   --min-free-bytes <val>  Minimum amount of free space (in bytes) that the root partition should have
                           before updating. Otherwise a warning message will be displayed.
                           Default: $min_free_bytes
+  --other-updates         Enable support for *user-defined* other updates (e.g. 'flatpak update').
 
 Tip: create an alias in file ~/.bashrc for $progname to have the options you need, for example:
 
@@ -409,9 +411,16 @@ DiskSpace() {
     fi
 }
 
-echo2blue()  { echo2 -e "${BLUE}$1${RESET}" ; }
-echo2red()   { echo2 -e "${RED}$1${RESET}" ; }
-echo2green() { echo2 -e "${GREEN}$1${RESET}" ; }
+echo2blue()   { echo2 -e "${BLUE}$1${RESET}" ; }
+echo2red()    { echo2 -e "${RED}$1${RESET}" ; }
+echo2green()  { echo2 -e "${GREEN}$1${RESET}" ; }
+echo2yellow() { echo2 -e "${YELLOW}$1${RESET}" ; }
+echo2cyan()   { echo2 -e "${CYAN}$1${RESET}" ; }
+
+echo2error()   { echo2red    "$1" ; }
+echo2info()    { echo2yellow "$1" ; }
+echo2warning() { echo2cyan   "$1" ; }
+echo2tip()     { echo2green  "$1" ; }
 
 Cleanup() {
     [ "$cmdfile" ] && rm -f -- "$cmdfile"
@@ -422,8 +431,10 @@ Main() {
     local cmdfile=""
     local -r RED=$'\e[0;91m'
     local -r GREEN=$'\e[0;92m'
+    local -r YELLOW=$'\e[0;93m'
     local -r BLUE=$'\e[0;94m'
     local -r MAGENTA=$'\e[0;95m'
+    local -r CYAN=$'\e[0;95m'
     local -r RESET=$'\e[0m'
 
     local -r pacmanconf=/etc/pacman.conf
@@ -435,7 +446,7 @@ Main() {
     local lopts="aur,clear-databases,descriptions,dump-options,fast,keyrings-reset,nvidia,no-keyring,no-sync,helper:"
     lopts+=",min-free-bytes:,pacdiff,paru,yay,pacman,help,run-mode:,faillock-check"
     lopts+=",show-only-fixed,show-upstream-news,check-mirrors-arch,check-mirrors-eos,check-mirrors,edit-mirrorlist:"
-    lopts+=",check-databases,reset-pacmanconf"
+    lopts+=",check-databases,reset-pacmanconf,other-updates"
     local sopts="dh"
 
     trap Cleanup EXIT
@@ -463,6 +474,7 @@ Main() {
     local nvidia=no                               # user may enable Nvidia check with --nvidia
     local descriptions=no                         # user may enable showing descriptions of the package updates
     local faillockcheck=no
+    local other_updates=no                        # user can add update commands for other sources
     local nvidia_opt=""
     local sync="sync"
     local eufast=no
@@ -492,7 +504,7 @@ Main() {
     DiskSpace
 
     if [ -e $lock ] && sudo fuser $lock &>/dev/null ; then
-        echo2red "==> File $lock is in use.\n    Check if another process is still managing packages."
+        echo2error "==> File $lock is in use.\n    Check if another process is still managing packages."
         exit 1
         # DIE "file $lock is in use. Check if another process is still managing packages."
         rmopt=i
@@ -500,11 +512,11 @@ Main() {
 
     case "$helper" in
 	pacman)
-            echo2green "Updating native apps..."
+            echo2info "Updating native apps..."
             CreateCmds
 	    ;;
 	*)
-            echo2green "Updating native and AUR apps..."
+            echo2info "Updating native and AUR apps..."
             CreateCmds "$helper -Sua"
 	    ;;
     esac
@@ -516,6 +528,17 @@ Main() {
         login | root)  $EOS_ROOTER "$cmdfile" ;;
         *)             DIE "unsupported value for option --run-mode" ;;
     esac
+
+    # support for user-defined other updates
+    if [ $other_updates = yes ] ; then
+        local otherUpdatesFile=/usr/bin/eos-update-other.bash
+        if [ -e $otherUpdatesFile ] ; then
+            bash $otherUpdatesFile
+        else
+            echo2warning "==> script $otherUpdatesFile does not exist"
+        fi
+    fi
+
     Cleanup
 }
 

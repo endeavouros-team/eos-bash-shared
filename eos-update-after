@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo2() { echo "$@" >&2 ; }
+echo2() { echo -e "$@" >&2 ; }
 WARN()  { echo2 "$progname: warning: $1" ; }
 echo2green() { echo2 "${GREEN}$1${RESET}" ; }
 
