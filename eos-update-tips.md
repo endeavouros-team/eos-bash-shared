@@ -20,6 +20,14 @@ There are many more options available than explained here.
 
 This assumes either `yay` or `paru` is installed.
 
+## Update other packages (e.g. flatpak)
+
+Edit file `/bin/eos-update-other.bash` and add proper commands to update *other* than native or AUR packages.
+Then run `eos-update` with option `--other-updates`, and your commands will be executed after native (and optionally AUR) updates.<br>
+Example:
+
+`eos-update --aur --other-updates`
+
 ## See the descriptions of the updated packages
 
 `eos-update --descriptions`
