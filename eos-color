@@ -1,0 +1,23 @@
+#!/bin/bash
+
+EosColor() {
+    local color="$1"    # one of the foreground color strings below, or a reserved word below
+    local std="$2"      # optional; stdout (=default) or stderr or 2
+    local progname=${0##*/}
+
+    source "/etc/$progname.conf"
+
+    case "$color" in
+        "" | reset)    color="$RESET" ;;
+        error | fail)  color="$RED" ;;
+        info)          color="$YELLOW" ;;
+        warning)       color="$CYAN" ;;
+        tip | ok)      color="$GREEN" ;;
+    esac
+    case "$std" in
+        stderr | 2) echo -n "$color" >&2 ;;
+        *)          echo -n "$color" ;;
+    esac
+}
+
+EosColor "$@"
