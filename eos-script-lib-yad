@@ -26,6 +26,7 @@
 #
 # shellcheck disable=SC1090      # Don't show warnings on sourceing via a variable
 
+source /etc/eos-color.conf
 source /etc/eos-script-lib-yad.conf      # for EOS_ROOTER and other configs
 
 export EOS_WICON=/usr/share/endeavouros/EndeavourOS-icon.png
@@ -332,14 +333,13 @@ eos_notification_all() {   # sending notification to all users
     # [ "$body_to_tty" = "yes" ] && echo "==> INFO: $body" >&2     # meant to print to TTY
 
     if [ "$XDG_SESSION_TYPE" = "tty" ] || [ -z "$DISPLAY" ] || [ "$TERM" = "linux" ] || [[ $(tty) =~ /dev/tty ]] ; then
-        local -r prefix=$'\e['
-        local -r C_RESET="${prefix}0m"
+        local -r C_RESET="$RESET"
         local C_ON=""
 
         # bold colors
         case "$color" in
-            YELLOW)  C_ON="${prefix}1;33m" ;;
-            RED)     C_ON="${prefix}1;31m" ;;
+            YELLOW)  C_ON="$YELLOW" ;;
+            RED)     C_ON="$RED" ;;
         esac
 
         printf "%s==> %s%s\n" "$C_ON" "$body" "$C_RESET" >&2

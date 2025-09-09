@@ -10,9 +10,9 @@ EosColor() {
     case "$color" in
         "" | reset)    color="$RESET" ;;
         error | fail)  color="$RED" ;;
-        info)          color="$YELLOW" ;;
-        warning)       color="$CYAN" ;;
-        tip | ok)      color="$GREEN" ;;
+        info)          color="$GREEN" ;;
+        warning)       color="$YELLOW" ;;
+        tip | ok)      color="$CYAN" ;;
     esac
     case "$std" in
         stderr | 2) echo -n "$color" >&2 ;;
