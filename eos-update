@@ -429,14 +429,6 @@ Cleanup() {
 Main() {
     local progname="${0##*/}"
     local cmdfile=""
-    local -r RED=$'\e[0;91m'
-    local -r GREEN=$'\e[0;92m'
-    local -r YELLOW=$'\e[0;93m'
-    local -r BLUE=$'\e[0;94m'
-    local -r MAGENTA=$'\e[0;95m'
-    local -r CYAN=$'\e[0;95m'
-    local -r RESET=$'\e[0m'
-
     local -r pacmanconf=/etc/pacman.conf
     local -r eml=/etc/pacman.d/endeavouros-mirrorlist
     local -r aml=/etc/pacman.d/mirrorlist
