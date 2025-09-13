@@ -11,6 +11,7 @@ _eos-update_()
     _init_completion -s || return
 
     case "$prev" in
+        --colors)          _eos-update_complete "yes no" ;;
         --min-free-bytes)  _eos-update_complete "{1..9}" ;;
         --helper)          _eos-update_complete "yay paru pacman" ;;
         --edit-mirrorlist) _eos-update_complete "arch endeavouros" ;;
