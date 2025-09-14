@@ -3,10 +3,18 @@
 # Package updater for EndeavourOS and Arch.
 # Handles db lock file, keyrings, syncing, and optionally AUR with given AUR helper.
 
-echo2()   { echo "$@" >&2 ; }
+echo2()   { echo -e "$@" >&2 ; }
 printf2() { printf "$@" >&2 ; }
-WARN()    { echo2 "==> $progname: warning: $1"; }
-DIE()     { echo2 "==> $progname: error: $1"; exit 1;  }
+
+WARN()    { echo2warning "==> $progname: warning: $1"; }
+DIE()     { echo2error   "==> $progname: error: $1"; exit 1;  }
+
+UseColor() { [ $use_colors = yes ] && eos-color "$@" 2 ; }
+
+echo2error()   { UseColor error;   echo2 "$@"; UseColor reset ; }
+echo2info()    { UseColor info;    echo2 "$@"; UseColor reset ; }
+echo2warning() { UseColor warning; echo2 "$@"; UseColor reset ; }
+echo2tip()     { UseColor tip;     echo2 "$@"; UseColor reset ; }
 
 SetHelper() {
     for helper in "$@" "$EOS_AUR_HELPER" "$EOS_AUR_HELPER_OTHER" yay paru pacman ; do
@@ -166,7 +174,7 @@ CheckPackageDatabases() {
     local -r out="$(file $dir/*.{db,files} | grep -Pv "(gzip|Zstandard|XZ) compressed data")"
     if [ "$out" ] ; then
         echo2error "$out"
-        echo2 -e "==> one or more files $dir/*.{db,files} corrupted.\n    '$progname --clear-databases' may fix it."
+        echo2 "==> one or more files $dir/*.{db,files} corrupted.\n    '$progname --clear-databases' may fix it."
         exit 1
     fi
     echo2 "==> package database: success, compressed data as expected."
@@ -223,6 +231,15 @@ FaillockCheck() {
     fi
 }
 
+PacCache() {
+    case "$paccache_limit" in
+        1|2|3|4|5)
+            echo2info "==> sudo paccache -rk$paccache_limit"
+            sudo paccache -rk$paccache_limit
+            ;;
+    esac
+}
+
 ResetPacmanConf() {
     local -r pacmanconf_url="https://raw.githubusercontent.com/endeavouros-team/EndeavourOS-ISO/refs/heads/main/airootfs/etc/pacman.conf"
     local -r tmpfile=$(mktemp)
@@ -269,22 +286,35 @@ SingleOptions() {
                                                  echo $lopts $sopts
                                                  exit 0
                                                  ;;
-            -h | --help)                         Usage
-                                                 exit 0
-                                                 ;;
+            -h | --help)                         Usage 0 ;;
         esac
         shift
     done
 }
 
 Options() {
-    local opts
+    local tmp
 
-    opts="$(LANG=C /usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@")" || {
-        echo2 "==> more info with command: $progname --help"
+    tmp="$(LANG=C /usr/bin/getopt -o=$sopts --longoptions $lopts --name "$progname" -- "$@" 2>&1)" || {
+        # First, fix a getopt bug about missing argument for short options.
+        tmp="$(echo "$tmp" | head -n1)"
+        case "$tmp" in
+            "$progname: option requires an argument -- '"[a-z]"'")
+                tmp=$(echo "$tmp" | sed -E "s|.*'([a-z])'.*|\1|")
+                tmp="$progname: option '-$tmp' requires an argument"
+                ;;
+        esac
+        echo2error  "$tmp\n"
+        if false ; then
+            UseColor warning
+            Usage
+            UseColor reset
+        else
+            echo2tip "==> more info with command: $progname --help"
+        fi
         exit 1
     }
-    eval set -- "$opts"
+    eval set -- "$tmp"
 
     local ret=0
     while true ; do
@@ -307,13 +337,20 @@ Options() {
             --aur)                               SetHelper; eufast_opt+=" $1" ;;
             --paru | --yay | --pacman)           SetHelper "${1/--/}" ;;
 	    --pacdiff)                           pacdiffer="$pacdiffer_cmd_default" ;;
+            --cache-limit | -l)                  paccache_limit="$2"
+                                                 case "$paccache_limit" in
+                                                     1|2|3|4|5) ;;
+                                                     *) DIE "value '$paccache_limit' for option $1 is not supported; use numbers 1 to 5" ;;
+                                                 esac
+                                                 shift
+                                                 ;;
             --other-updates)                     other_updates=yes ;;
             --colors)                            use_colors="$2"
-                                                 shift
                                                  case "$use_colors" in
                                                      yes | no) ;;
-                                                     *)        use_colors=yes ;;
+                                                     *) DIE "value '$use_colors' for option $1 is not supported; use 'yes' or 'no'" ;;
                                                  esac
+                                                 shift
                                                  ;;
             
             --) shift ; break ;;
@@ -323,7 +360,7 @@ Options() {
 }
 
 Usage() {
-    cat <<EOF
+    cat <<EOF >&2
 $progname is a package updater for EndeavourOS and Arch.
 
 $progname is implemented as a wrapper around commands pacman and optionally yay/paru.
@@ -379,6 +416,10 @@ Options:
   --show-upstream-news    Show the news page of the upstream site and exit.
   --pacdiff		  Run eos-pacdiff in the end of $progname. See also EOS_UPDATE_PACDIFFER
   			  in file /etc/eos-script-lib-yad.conf.
+  --cache-limit, -l <val> Runs 'paccache -rk <val>' after updates. Limits the size of the package cache.
+                          Supported numbers for <val>: 1..5.
+  --colors <val>          Enable or disable using additional colors in output. By default they are enabled.
+                          Supported values: "yes" or "no".
   --helper <val>          AUR helper name. Supported values: yay, paru, pacman.
                           Default: pacman
                           Other AUR helpers supporting option -Sua like yay should work as well.
@@ -397,6 +438,7 @@ Tip: create an alias in file ~/.bashrc for $progname to have the options you nee
      alias $progname='$progname --nvidia --no-sync --paru'
 
 EOF
+    [ "$1" ] && exit $1
 }
 
 DiskSpace() {
@@ -418,13 +460,6 @@ DiskSpace() {
     fi
 }
 
-UseColor() { [ $use_colors = yes ] && eos-color "$@" 2 ; }
-
-echo2error()   { UseColor error;   echo2 "$1"; UseColor reset ; }
-echo2info()    { UseColor info;    echo2 "$1"; UseColor reset ; }
-echo2warning() { UseColor warning; echo2 "$1"; UseColor reset ; }
-echo2tip()     { UseColor tip;     echo2 "$1"; UseColor reset ; }
-
 Cleanup() {
     [ "$cmdfile" ] && rm -f -- "$cmdfile"
 }
@@ -441,8 +476,8 @@ Main() {
     local lopts="aur,clear-databases,descriptions,dump-options,fast,keyrings-reset,nvidia,no-keyring,no-sync,helper:"
     lopts+=",min-free-bytes:,pacdiff,paru,yay,pacman,help,run-mode:,faillock-check"
     lopts+=",show-only-fixed,show-upstream-news,check-mirrors-arch,check-mirrors-eos,check-mirrors,edit-mirrorlist:"
-    lopts+=",check-databases,reset-pacmanconf,other-updates,colors:"
-    local sopts="dh"
+    lopts+=",check-databases,reset-pacmanconf,other-updates,colors:,cache-limit:"
+    local sopts="dhl:"
 
     trap Cleanup EXIT
 
@@ -475,6 +510,7 @@ Main() {
     local eufast=no
     local eufast_opt="--arch --endeavouros"
     local use_colors=yes
+    local paccache_limit=""
 
     Options "$@"
 
@@ -525,13 +561,15 @@ Main() {
         *)             DIE "unsupported value for option --run-mode" ;;
     esac
 
+    PacCache
+
     # support for user-defined other updates
     if [ $other_updates = yes ] ; then
         local otherUpdatesFile=/usr/bin/eos-update-other.bash
         if [ -e $otherUpdatesFile ] ; then
             bash $otherUpdatesFile
         else
-            echo2warning "==> script $otherUpdatesFile does not exist"
+            WARN "script $otherUpdatesFile does not exist"
         fi
     fi
 
