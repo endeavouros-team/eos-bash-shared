@@ -133,7 +133,7 @@ _paccache_cleaner_manager()
     local result=""
     local field_nr=1
     local indent="<tt>  </tt>"
-    local du="$(LANG=C /usr/bin/du --si -s /var/cache/pacman/pkg | /usr/bin/awk '{print $1}' | sed 's|\([KMGT]\)$| \1B|')"
+    local du="$(LANG=C /usr/bin/du --si -s /var/cache/pacman/pkg/ | /usr/bin/awk '{print $1}' | sed 's|\([KMGT]\)$| \1B|')"
     local df="$(LANG=C /usr/bin/df --si | /usr/bin/grep -w /     | /usr/bin/awk '{print $4}' | sed 's|\([KMGT]\)$| \1B|')"
     local options=""
     local defaults=no
