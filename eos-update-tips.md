@@ -65,11 +65,36 @@ Usually the wait is not long.
 Note that there have been cases they weren't in sync, causing a problem
 at system restart.
 
+## Manage package cache
+
+With option `--cache-limit` `eos-update` will remove older packages in the package cache
+(in `/var/cache/pacman/pkg`) after each update.
+<br>
+Tip: this option may be useful when *sharing* the package cache with other installations (that use
+Arch and/or EndeavourOS repos).
+<br>
+Example:<br><br>
+`eos-update --cache-limit 2`
+<br><br>
+will keep only **two** of the latest versions of each package in the cache and remove their older versions.<br>
+See also options `-k` (and `-r`) in `man paccache`.
+
+## Colors in eos-update's output
+
+`eos-update` by default shows slightly colored output, in addition to what `pacman` and the AUR helpers may show.<br>
+Option `--colors` can enable or disable the usage of the *additional* colors added by `eos-update`.<br>
+Example:<br>
+```
+eos-update --colors yes       # enable additional colors in output
+eos-update --colors no        # disable additional colors in output
+```
+
 ## Aliases
 
 Here's some potentially useful aliases for `eos-update`:
 ```
-alias u='eos-update --fast --descriptions'           # without Nvidia GPU
-alias u='eos-update --fast --descriptions --nvidia'  # with Nvidia GPU
+alias u='eos-update --fast --descriptions'           # "fast" update check; also show the descriptions of updated packages
+alias u='eos-update --fast --descriptions --nvidia'  # the same when Nvidia GPU is installed
+alias u='eos-update --cache-limit 1'                 # limits the growth of the package cache
 ```
 Note that option `--nvidia` works even if the system has *no* Nvidia GPU.
