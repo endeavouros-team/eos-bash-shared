@@ -236,6 +236,13 @@ PacCache() {
         1|2|3|4|5)
             echo2info "==> sudo paccache -rk$paccache_limit"
             sudo paccache -rk$paccache_limit
+
+            local usage=$(/bin/du -hd1 /var/cache/pacman/pkg/)
+            local amount=$(echo "$usage" | awk '{print $1}')
+            local folder=$(echo "$usage" | awk '{print $2}')
+            UseColor info
+            printf2 "==> Disk space used in the package cache: %s [%s]\n" "$amount" "$folder"
+            UseColor reset
             ;;
     esac
 }
