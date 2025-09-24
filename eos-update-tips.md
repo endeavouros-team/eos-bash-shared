@@ -28,6 +28,13 @@ Example:
 
 `eos-update --aur --other-updates`
 
+## Unlock locked privilege elevation
+
+Giving a wrong password to `sudo` three times in a row may lock `sudo` from doing its job.<br>
+This can be fixed with option `--faillock-check`:
+
+`eos-update --faillock-check`
+
 ## See the descriptions of the updated packages
 
 `eos-update --descriptions`
