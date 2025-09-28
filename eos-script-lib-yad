@@ -405,6 +405,7 @@ eos_yad_terminal() {
         terminology
         sakura
         ghostty
+        foot           # wayland
     )
     local xx
 
