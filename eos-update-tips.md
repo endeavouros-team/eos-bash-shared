@@ -74,17 +74,20 @@ at system restart.
 
 ## Manage package cache
 
-With option `--cache-limit` `eos-update` will remove older packages in the package cache
+With option `--cache-limit`, `eos-update` will remove older packages in the package cache
 (in `/var/cache/pacman/pkg`) after each update.
-<br>
-Tip: this option may be useful when *sharing* the package cache with other installations (that use
+<br><br>
+*Tip*: option `--cache-limit` can be useful when ***sharing*** the package cache with other installations (that use
 Arch and/or EndeavourOS repos).
-<br>
-Example:<br><br>
+
+### Example
 `eos-update --cache-limit 2`
 <br><br>
-will keep only **two** of the latest versions of each package in the cache and remove their older versions.<br>
-See also options `-k` (and `-r`) in `man paccache`.
+will call<br>
+`paccache -rk2`
+<br><br>
+so it keeps only **two** of the latest versions of each package in the cache and removes older package versions.<br>
+See also options `-k` and `-r` in `man paccache`.
 
 ## Colors in eos-update's output
 
