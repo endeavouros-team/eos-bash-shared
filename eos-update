@@ -64,10 +64,10 @@ CheckYourArchMirrorlist() {
     # get working mirrors from the Arch mirrorlist page
     all_working_mirrors=$(curl --fail -Lsm 30 "$url") || DIE "failed to fetch available mirrors (curl code $?)"
     [ "$all_working_mirrors" ] || DIE "-> archlinux.org/mirrorlist failed"
-    readarray -t all_working_mirrors <<< $(echo "$all_working_mirrors" | tail -n +7 | grep "^#Server = " | awk '{print $NF}')
+    readarray -t all_working_mirrors < <(echo "$all_working_mirrors" | tail -n +7 | grep "^#Server = " | awk '{print $NF}')
 
     # get mirrors from local mirrorlist
-    readarray -t local_mirrors <<< $(grep -n "^[ \t]*Server[ \t]*=[ \t]*" $aml | sed 's|[ \t]*Server[ \t]*=[ \t]*||')
+    readarray -t local_mirrors < <(grep -n "^[ \t]*Server[ \t]*=[ \t]*" $aml | sed 's|[ \t]*Server[ \t]*=[ \t]*||')
 
     for lm in "${local_mirrors[@]}" ; do
         if printf "%s\n" "${all_working_mirrors[@]}" | grep "${lm#*:}" >/dev/null ; then

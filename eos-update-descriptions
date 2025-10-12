@@ -114,7 +114,7 @@ Main() {
     CheckValueYesNo "$separator" "--separator"
 
     if [ ${#pkgnames} -eq 0 ] ; then
-        readarray -t pkgnames <<< $(AsPlainUserIfElevated $helper -Quq)       # assumes 'pacman -Sy' was just executed
+        readarray -t pkgnames < <(AsPlainUserIfElevated $helper -Quq)       # assumes 'pacman -Sy' was just executed
         [ ${#pkgnames} -eq 0 ] && return
     fi
 

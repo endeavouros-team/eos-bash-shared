@@ -50,7 +50,7 @@ yad_ChangeDisplayResolution() {
     local b_refresh=10        # button "Set and stay" clicked
     local b_exit=252          # (X) clicked in the upper right corner
 
-    readarray -t resosarr <<< $(echo "$resos")
+    readarray -t resosarr < <(echo "$resos")
 
     if [ -n "$reso" ] ; then
         if [ -n "$(echo "$resos" | grep "$reso")" ] ; then
