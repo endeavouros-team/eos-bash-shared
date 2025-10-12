@@ -18,14 +18,43 @@ DoNotify() {
     "${cmd[@]}"
 }
 
+InfoNotify() {
+    local expiretime="${1}000"         # seconds to milliseconds
+    local msg="$2"
+    local icon=/usr/share/icons/Qogir/scalable/apps/info.svg
+    [ -e $icon ] || icon=info
+    local cmd=(
+        eos_notification_all
+        "$ICO_INFO"                    # icon
+        normal                         # urgency
+        "$expiretime"                  # expiretime
+        "$progname"                    # appname
+        "Notification from $progname"  # summary
+        "$msg"                         # body
+        RED
+    )
+    "${cmd[@]}"
+}
+
 Wait-for-some-processes() {
     # Wait for all pacman-like processes to finish.
+    local -r progname=${0##*/}
+    local inform_interval_sec=10
+    local count=0
+
+    source /usr/share/endeavouros/scripts/eos-script-lib-yad --limit-icons || return
+
+    # InfoNotify 3 "Waiting for apps [pacman,yay,paru,makepkg] to finish..."
 
     systemctl disable --now eos-reboot-required.timer
     sleep 1
-    source /usr/share/endeavouros/scripts/eos-script-lib-yad --limit-icons || return
     while ps -C pacman,yay,paru,makepkg >/dev/null ; do
         sleep 1
+        ((count++))
+        if [ $count -ge $inform_interval ] ; then
+            InfoNotify $((inform_interval_sec - 2)) "Still waiting for apps [pacman,yay,paru,makepkg] to finish..."
+            count=0
+        fi
     done
     DoNotify
 }
