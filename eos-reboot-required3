@@ -51,7 +51,7 @@ Wait-for-some-processes() {
     while ps -C pacman,yay,paru,makepkg >/dev/null ; do
         sleep 1
         ((count++))
-        if [ $count -ge $inform_interval ] ; then
+        if [ $count -ge $inform_interval_sec ] ; then
             InfoNotify $((inform_interval_sec - 2)) "Still waiting for apps [pacman,yay,paru,makepkg] to finish..."
             count=0
         fi
