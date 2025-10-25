@@ -39,22 +39,21 @@ InfoNotify() {
 Wait-for-some-processes() {
     # Wait for all pacman-like processes to finish.
     local -r progname=${0##*/}
-    local inform_interval_sec=10
-    local count=0
+    local notification_given=no
+    local apps_to_wait="pacman,yay,paru,makepkg"
 
     source /usr/share/endeavouros/scripts/eos-script-lib-yad --limit-icons || return
 
-    # InfoNotify 3 "Waiting for apps [pacman,yay,paru,makepkg] to finish..."
-
     systemctl disable --now eos-reboot-required.timer
     sleep 1
-    while ps -C pacman,yay,paru,makepkg >/dev/null ; do
-        sleep 1
-        ((count++))
-        if [ $count -ge $inform_interval_sec ] ; then
-            InfoNotify $((inform_interval_sec - 2)) "Still waiting for apps [pacman,yay,paru,makepkg] to finish..."
-            count=0
+
+    while ps -C $apps_to_wait >/dev/null ; do
+        if [ $notification_given = no ] ; then
+            # show one waiting notification
+            InfoNotify 4 "Waiting for apps [$apps_to_wait] to finish..."
+            notification_given=yes
         fi
+        sleep 1
     done
     DoNotify
 }
