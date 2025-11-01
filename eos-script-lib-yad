@@ -66,8 +66,8 @@ eos_assert_deps() {      # params: prog deps
     local failcount=0
     local dep
     for dep in "$@" ; do
-        expac %n "$dep" &>/dev/null || {
-           echo "==> $prog requires package '$dep'" >&2
+        expac -Qs '%n' "$dep" &>/dev/null || {
+           echo "==> $prog depends on '$dep'" >&2
            ((failcount++))
         }
     done
