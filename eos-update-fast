@@ -38,6 +38,7 @@ Operate() {
             -h | --help) Usage $EXIT_UPDATES_NO ;;
             --verbose) ;;                             # already handled
             --reset-history | -r) ;;                  # already handled
+            --disable-failed-mirror) ;;               # already handled
             --) break ;;
             *) Usage $EXIT_ERROR ;;
         esac
@@ -60,6 +61,7 @@ Main() {
     local ret_arch=$EXIT_UPDATES_NO
     local ret_eos=$EXIT_UPDATES_NO
     local ret_aur=$EXIT_UPDATES_NO
+    local disable_failed_mirror=no
 
     [ "$1" ] || Usage $EXIT_ERROR
 
@@ -67,12 +69,13 @@ Main() {
     # Option --verbose can be given more than once to give more info (but max 2 times for any effect).
     for arg in "$@" ; do
         case "$arg" in
-            --verbose) ((verbose++)) ;;
-            --reset-history | -r) reset_history=yes ;;
+            --verbose)               ((verbose++)) ;;
+            --reset-history | -r)    reset_history=yes ;;
+            --disable-failed-mirror) disable_failed_mirror=yes ;;
         esac
     done
 
-    local lopts=verbose,arch,endeavouros,aur,help,reset-history
+    local lopts=verbose,arch,endeavouros,aur,help,reset-history,disable-failed-mirror
     local sopts=aeyhr
     local opts
     local out=""
@@ -108,6 +111,13 @@ GetArchPart() {
     grep -w "^Server" /etc/pacman.d/mirrorlist | grep -m1 $1 | sed 's|^Server = \(http.*\)/$repo/os/$arch|\1|'
 }
 
+DisableMirror() {
+    local mirror="$1"
+    local mlfile="/etc/pacman.d/$ml"
+    Warning "==> commenting out failed mirror"
+    sudo sed -i "$mlfile" -e "s|^\(Server[ ]*=[ ]*$mirror\)|#### \1|"
+}
+
 GetUrlFromMirrorsFile() {
     local count="$1"
     [ "$count" ] || count=1
@@ -118,6 +128,8 @@ GetUrlFromMirrorsFile() {
 
 DiscoverUrlAndData() {
     local ix=0
+    local url_orig=""
+    local exitcode=0
 
     while true ; do
         (( ix++ ))
@@ -128,6 +140,7 @@ DiscoverUrlAndData() {
                 ;;
             Arch)
                 GetUrlFromMirrorsFile $ix
+                url_orig="$url"
                 url=${url%\$repo/os/\$arch}$file
                 ;;
         esac
@@ -137,9 +150,16 @@ DiscoverUrlAndData() {
             *) DIE "$FUNCNAME: getting proper $os URL failed" ;;
         esac
 
-        data=$(curl --fail -Lsm 10 -o- "$url") || { echo2 " -> fetching $url failed"; continue; }
+        data=$(curl --fail -Lsm 10 -o- "$url") || exitcode=$?
+        if [ $exitcode -ne 0 ] ; then
+            Warning " -> fetching $url failed ([curl $exitcode]: $(curl-exit-code-to-string $exitcode))"
+            [ "$disable_failed_mirror" = yes ] && DisableMirror "$url_orig"
+            exitcode=0
+            continue
+        fi
         [ "$data" ]                            || { echo2 " -> no data from $url"; continue; }
         [ "${data//[0-9]*/}" ]                 && { echo2 " -> $url data corrupt"; continue; }       # data must be numbers only
+        echo2 " -> fetching $url: OK"
         return
     done
     DIE "fetching data from $os mirrors failed"
@@ -237,6 +257,11 @@ echo2() { echo "$@" >&2 ; }
 DIE() {
     printf "%s: error: %s\n\n" "$progname" "$1" >&2
     Usage $EXIT_ERROR
+}
+Warning() {
+    eos-color warning 2
+    echo2 "$1"
+    eos-color reset 2
 }
 
 Main "$@"
