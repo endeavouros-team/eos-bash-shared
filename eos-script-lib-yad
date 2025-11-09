@@ -984,3 +984,33 @@ _bg_or_bashdb() {
         *)      "$@" & ;;         # otherwise run in background
     esac
 }
+
+NanoPager() {                                         # a pager based on 'nano' editor
+    local -r nano=/bin/nano
+    if [ -x $nano ] ; then
+        local file="$1"
+        local cmd="$nano +1 --view -"
+        if [ "$file" ] ; then
+            if [ -e "$file" ] ; then
+                cat "$file" | $cmd                    # e.g. NanoViewer readme.txt
+            else
+                echo "==> $FUNCNAME: file $file not found" >&2
+            fi
+        else
+            $cmd                                      # e.g. ls -la | NanoViewer
+        fi
+    else
+        return 1
+    fi
+}
+
+GetPager() {                                          # return a pager out of some known pagers
+    local app
+    local pager_apps=("$PAGER" "less -RF" bat most more cat)
+    for app in "${pager_apps[@]}" ; do
+        if [ -x /bin/${app%% *} ] ; then
+            echo "/bin/$app"
+            return
+        fi
+    done
+}
