@@ -1,0 +1,24 @@
+#!/bin/bash
+
+NanoPager() {                                         # a pager based on 'nano' editor
+    local file="$1"
+    local progname=${0##*/}
+    local -r nano=/bin/nano
+    if [ -x $nano ] ; then
+        local cmd="$nano +1 --view -"
+        if [ "$file" ] ; then
+            if [ -e "$file" ] ; then
+                cat "$file" | $cmd                    # e.g. NanoViewer readme.txt
+            else
+                echo "==> $progname: file $file not found" >&2
+            fi
+        else
+            $cmd                                      # e.g. ls -la | NanoViewer
+        fi
+    else
+        echo "==> $progname: 'nano' is not installed" >&2
+        return 1
+    fi
+}
+
+NanoPager "$@"
