@@ -1,19 +1,27 @@
 #!/bin/bash
 
-NanoPager() {                                         # a pager based on 'nano' editor
+# A pager based on 'nano' editor.
+# nano-pager can be used in two simple ways:
+#
+#     1. via a pipe:                 ls -la | nano-pager
+# or
+#     2. like a standard command:    nano-pager readme.txt
+#
+
+NanoPager() {
     local file="$1"
     local progname=${0##*/}
     local -r nano=/bin/nano
     if [ -x $nano ] ; then
-        local cmd="$nano +1 --view -"
+        local cmd="$nano +1 --modernbindings --view"
         if [ "$file" ] ; then
             if [ -e "$file" ] ; then
-                cat "$file" | $cmd                    # e.g. NanoViewer readme.txt
+                $cmd "$file"
             else
                 echo "==> $progname: file $file not found" >&2
             fi
         else
-            $cmd                                      # e.g. ls -la | NanoViewer
+            $cmd -
         fi
     else
         echo "==> $progname: 'nano' is not installed" >&2
