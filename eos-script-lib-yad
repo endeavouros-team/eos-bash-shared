@@ -249,7 +249,7 @@ EosSudoEditor() {
     # DIE "suitable editor not found"
 }
 
-eos_GetProgName() { /usr/bin/basename "$0" ; }
+eos_GetProgName() { echo "${0##*/}" ; }
 
 eos_select_browser() {
     # Select an existing browser.
