@@ -1,0 +1,18 @@
+# bash completion for exit-code-to-string        -*- shell-script -*-
+
+_exit_code_to_string__() {
+    # Supported command syntax: command-name exit-code app-name
+    # Currently only names listed in $apps (below) are supported app-names.
+    # Example: exit-code-to-string 4 wget
+
+    local cur prev words #cword split
+    _init_completion -s || return
+
+    local -r apps='curl|wget'
+    case "$prev" in
+        "${words[0]}")  COMPREPLY=($(compgen -W "{0..9}"       -P "$cur")) ;;
+        [0-9]*)         COMPREPLY=($(compgen -W "${apps//|/ }" -- "$cur")) ;;
+        $apps) ;;
+    esac
+} &&
+complete -F _exit_code_to_string__   exit-code-to-string curl-exit-code-to-string
