@@ -5,6 +5,10 @@ EosColor() {
     local std="$2"      # optional; stdout (=default) or stderr or 2
     local progname=${0##*/}
 
+    case "$color" in
+        -h | --help)   Help 0 ;;
+    esac
+
     source "/etc/$progname.conf"
 
     case "$color" in
@@ -18,6 +22,33 @@ EosColor() {
         stderr | 2) echo -n "$color" >&2 ;;
         *)          echo -n "$color" ;;
     esac
+}
+
+Help() {
+    local -r progname=${0##*/}
+    cat <<EOF
+Usage:      $progname [options] color-def [target-def]
+options:    -h, --help             This help. Optional.
+color-def:  Color variables defined in /etc/$progname.conf. Required.
+            Special values:
+                error, fail        For errors messages (red).
+                warning            For warning messages (yellow).
+                info               For info messages (green).
+                tip, ok            For tips and OK messages (cyan).
+                "", reset          Back to "normal" colors.
+target-def  Sets the file descriptor (fd) for the output. Optional.
+            Values:
+                2                  Output to fd 2.
+                Any other value    Output to fd 1.
+Examples:
+    eos-color error 2              Sets the color of future outputs to "error" (red).
+                                   Output goes to fd 2.
+    eos-color $RED 2               Same as above, using a variable from /etc/$progname.conf.
+    eos-color tip                  Sets the color for future tips (for fd 1).
+    eos-color reset 2              Sets future outputs to "normal" colors (for fd 2).
+    eos-color                      Sets future outputs to "normal" colors (for fd 1).
+EOF
+    [ "$1" ] && exit $1
 }
 
 EosColor "$@"
