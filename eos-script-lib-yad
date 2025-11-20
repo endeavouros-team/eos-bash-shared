@@ -987,7 +987,8 @@ _bg_or_bashdb() {
 
 GetPager() {                                          # return a pager out of some known pagers
     local app
-    local pager_apps=("$PAGER" "less -RF" bat most more cat)
+    local pager_apps=("less -RF" bat most more cat)
+    [ "$PAGER" ] && pager_apps=("$PAGER" "${pager_apps[@]}")
     for app in "${pager_apps[@]}" ; do
         if [ -x /bin/${app%% *} ] ; then
             echo "/bin/$app"
