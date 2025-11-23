@@ -47,7 +47,7 @@ PKG_CHANGELOGS+=(
     eos-settings-lxqt                 "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-settings-lxqt"
     eos-settings-mate                 "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-settings-mate"
     eos-settings-plasma               "https://github.com/endeavouros-team/eos-settings-plasma/commits"
-    eos-settings-xfce4                "https://github.com/endeavouros-team/endeavouros-xfce4-theming/commits"
+    eos-settings-xfce4                "https://github.com/endeavouros-team/eos-settings-xfce4/commits"
     eos-translations                  "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-translations"
     eos-update-notifier               "https://github.com/endeavouros-team/PKGBUILDS/commits/master/eos-update-notifier"
     # filesystem                        "https://gitlab.archlinux.org/archlinux/packaging/packages/filesystem/commits"
