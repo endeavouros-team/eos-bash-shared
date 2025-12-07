@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# Usage: eos-wallpaper-set [filename]
-# where
-#    filename      Picture file name (optional).
-#
-# Without filename, assumes all wallpapers are at /usr/share/endeavouros/backgrounds.
-
 #################################################################################
 EOS_SCRIPTS_YAD=/usr/share/endeavouros/scripts/eos-script-lib-yad
 if [ -e $EOS_SCRIPTS_YAD ] ; then
@@ -333,6 +327,50 @@ AssertPicture() {
     echo "Setting desktop wallpaper $pic for '$DE' ..." >&2
 }
 
+RemoveBadWallsFromHistory() {
+    local walls_remove=() wp
+
+    walls=()
+    for wp in "$@" ; do
+        if [ -e "$wp" ] ; then
+            walls+=("$wp")
+        else
+            echo "==> not exist: '$wp'" >&2
+            if false && [ "$quote_some_specials" = yes ] && [ "${wp//\[/}" != "$wp" ] ; then
+                wp=${wp//\[/\\[}                         # quote possible [ and ] for 'grep' below in this function
+                wp=${wp//\]/\\]}
+            fi
+            walls_remove+=("$wp")
+        fi
+    done
+    if [ "$walls_remove" ] ; then
+        local reply
+        read -p "==> Remove non-existing wallpaper paths from the history (Y/n)? " reply >&2
+        case "$reply" in
+            [Nn]*) ;;
+            *)
+                rm -f "$history_of_backgrounds".bak
+                mv "$history_of_backgrounds" "$history_of_backgrounds".bak
+                printf "%s\n" "${walls_remove[@]}" > "$history_of_backgrounds.removed_paths"
+                grep -Fvf "$history_of_backgrounds.removed_paths" "$history_of_backgrounds".bak > "$history_of_backgrounds"
+                ;;
+        esac
+    fi
+}
+
+Pager() {
+    local file="$1"
+    [    "$file" ] || return 1
+    [ -r "$file" ] || return 2
+    local pager="/bin/more -de"
+
+    if [ -x /bin/less ] ; then
+        local LESS="-P [H=help] %f"
+        pager="/bin/less"
+    fi
+    $pager "$file"
+}
+
 Parameters() {
     local arg msg
 
@@ -343,8 +381,21 @@ Parameters() {
                 exit 0
                 ;;
             --history)
-                local wp=$(grep ^[0-9] "$history_of_backgrounds" | awk '{print $NF}' | sort -u | fzf)
-                [ "$wp" ] && Main "$wp"
+                # Wallpaper file names may have spaces.
+                # Some old wallpapers may not exist anymore.
+                local walls=() wp
+                readarray -t walls < <(grep ^[0-9] "$history_of_backgrounds" | sed -E 's|^[^:]+: (/.*)|\1|' | sort -u)
+                RemoveBadWallsFromHistory "${walls[@]}"
+                if [ "$walls" ] ; then
+                    wp=$(printf "%s\n" "${walls[@]}" | fzf)
+                    [ "$wp" ] && Main "$wp"
+                else
+                    echo "==> no wallpapers in the history" >&2
+                fi
+                exit 0
+                ;;
+            --history-raw)
+                Pager "$history_of_backgrounds"
                 exit 0
                 ;;
             -*)
@@ -368,6 +419,7 @@ Usage: <b>$progname</b> [options] [wallpaper-file | folder]
 Options:
     -h, --help           This help.
     --history            Select wallpaper from previously set wallpapers.
+    --history-raw        Show wallpaper history fully including time stamps.
 Parameters:
     <i>wallpaper-file</i>
         Wallpaper file name, 'DEFAULT', or 'ISO':
@@ -415,10 +467,11 @@ Main()
 {
     local -r progname=${0##*/}
     local -r DE="$(GetDE)"
-    local -r picfolder=/usr/share/endeavouros/backgrounds
+    local picfolder=/usr/share/endeavouros/backgrounds
     local pic=""
     local pic_default=""
     local history_of_backgrounds="$HOME/.$progname.history-of-wallpapers"   # saves history of wallpaper file names
+    local quote_some_specials=yes
 
     # yad_missing_check $progname
 
