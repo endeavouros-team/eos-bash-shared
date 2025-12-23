@@ -2,8 +2,8 @@
 
 # On Nvidia GPU machines, the non-dkms Nvidia drivers need to be updated
 # *in sync* with the corresponding kernel:
-#   - if linux-lts is updated and nvidia-lts is installed, nvidia-lts should be updated too
-#   - if linux     is updated and nvidia     is installed, nvidia     should be updated too
+#   - if linux-lts is updated and $nvidia_lts is installed, $nvidia_lts should be updated too
+#   - if linux     is updated and $nvidia     is installed, $nvidia     should be updated too
 #
 # This app checks the above and informs the calling app with exit code:
 #     0 = success, no issue detected
@@ -19,10 +19,10 @@ ExitFail() { exit 1; }
 UpdatesInclude() { echo "$updates" | grep "^$1$" >/dev/null ; }
 IsInstalled()    { expac -Q %n "$1" >/dev/null ; }
 DriverCheck()    {
-    local -r linux="$1"
-    local -r nvidia="$2"
-    if UpdatesInclude "$linux" && IsInstalled "$nvidia" && ! UpdatesInclude "$nvidia" ; then
-        msgs+=("updates include $linux but not $nvidia")
+    local -r lnx="$1"
+    local -r nv="$2"
+    if UpdatesInclude "$lnx" && IsInstalled "$nv" && ! UpdatesInclude "$nv" ; then
+        msgs+=("updates include $lnx but not $nv")
     fi
 }
 
@@ -45,7 +45,10 @@ Parameters() {
 }
 
 Main() {
-    expac %n nvidia nvidia-lts >/dev/null || exit 0     # nothing to do
+    local -r nvidia=nvidia-open
+    local -r nvidia_lts=nvidia-open-lts
+
+    expac %n $nvidia $nvidia_lts >/dev/null || exit 0     # nothing to do
 
     local -r progname=${0##*/}
     local RED=$'\e[0;91m'
@@ -58,8 +61,8 @@ Main() {
 
     Parameters "$@"
 
-    DriverCheck linux     nvidia
-    DriverCheck linux-lts nvidia-lts
+    DriverCheck linux     $nvidia
+    DriverCheck linux-lts $nvidia_lts
 
     if [ ${#msgs[@]} -eq 0 ] ; then
         ExitOK
