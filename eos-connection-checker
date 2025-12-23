@@ -3,9 +3,8 @@
 # Checks that an internet connection exists.
 # Return value is 0 on success, or another number on failure (see also: 'curl-exit-code-to-string').
 #
-# Example usage:
-#    eos-connection-checker && echo connection is ON
-#    eos-connection-checker || echo connection is OFF
+# Examples:
+#    eos-connection-checker -t=20 && echo connection exists || echo no connection
 #    eos-connection-checker || curl-exit-code-to-string $?
 
 # FastestMirror assumes the list was created with eos-rankmirrors.
@@ -15,41 +14,73 @@ AllMirrors()    { grep "^Server[ ]*=[ ]*https://" $ml | sed 's|^Server[ ]*=[ ]*\
 
 Test() {
     local url="$1"
-    /usr/bin/curl --silent --fail --connect-timeout 8 "$url" >/dev/null  # download the 'state' file from a mirror
+    /bin/curl --silent --fail --connect-timeout $timeout "$url" >/dev/null  # download the 'state' file from a mirror
     retval=$?
     if [ $retval -eq 0 ] ; then
-        [ "$verbose" = "yes" ] && echo "Mirror = $url" >&2
+        [ "$verbose" = "yes" ] && echo "==> Mirror = $url" >&2
         exit 0                     # connection exists
     fi
+}
+
+CheckTimeout() {
+    case "$timeout" in
+        "") timeout=$default_timeout; return ;;                     # must have a value
+        0)  timeout=1; return ;;                                    # don't allow zero timeout
+        0*) timeout=$(echo "$timeout" | sed -E 's|[0]+(.+)|\1|') ;; # remove leading zeros
+    esac
+    [ "${timeout//[0-9]/}" ] && timeout=$default_timeout            # only numbers allowed
+}
+
+Help() {
+    local progname=${0##*/}
+    cat <<EOF
+Usage: $progname [options]
+Options:
+       -h,  --help         This help.
+       -v,  --verbose      Be more verbose.
+       -t*, --timeout=*    Max time in seconds to wait for each internet check to fail.
+                           Option --timeout requires a '=' and a number.
+                           Examples: '-t10', '-t=10', '--timeout=10' mean the same.
+                           Default timeout is $default_timeout.
+EOF
 }
 
 Main() {
     local -r ml=/etc/pacman.d/endeavouros-mirrorlist
     local fastest=""
-    local others=""
+    local URLs=()
     local URL
-    local retval=201
-    local verbose=no
+    local retval=201                                    # 201 means internal error, should never happen
     local fallback="https://forum.endeavouros.com/faq"  # fallback if no mirrors in $ml
+    local -r default_timeout=8
+    local timeout="$default_timeout"
+    local verbose=no
 
-    case "$1" in
-        -v | --verbose) verbose=yes ;;   # will show the responding mirror URL
-    esac
+    for arg in "$@" ; do
+        case "$arg" in
+            -v   | --verbose)    verbose=yes ;;
+            -t=* | --timeout=*)  timeout=${arg#*=}; CheckTimeout ;;
+            -t*)                 timeout=${arg/-t}; CheckTimeout ;;
+            -h   | --help)       Help; exit 0 ;;
+        esac
+    done
+    [ $verbose = yes ] && echo "==> Timeout = $timeout" >&2
 
     if [ -e $ml ] ; then
-        fastest="$(FastestMirror)"
+        fastest="$(FastestMirror)"                        # Try the fastest ranking mirror first.
         if [ "$fastest" ] ; then
             Test "$fastest"
-            others="$(AllMirrors | grep -v "$fastest")"
+            URLs=($(AllMirrors | grep -v "$fastest"))     # Fastest failed, use the actual mirrorlist without then $fastest.
         else
-            others="$(AllMirrors)"
+            URLs=("$(AllMirrors)")                        # Fastest not found, use the actual mirrorlist.
         fi
     fi
+    URLs+=("$fallback")                                   # Fallback URL if no mirrors configured.
 
-    for URL in $others $fallback ; do
+    for URL in "${URLs[@]}" ; do
         Test "$URL"
     done
-    return $retval                       # no connection
+    exit $retval                                          # all tested URLs failed, exit with the last curl error
 }
 
 Main "$@"
