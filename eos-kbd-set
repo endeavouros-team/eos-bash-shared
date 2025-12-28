@@ -1,26 +1,32 @@
 #!/bin/bash
 
 Main() {
-    echo "Session type: $XDG_SESSION_TYPE"
+    echo "Session type: $XDG_SESSION_TYPE" >&2
     local country=$(show-location-info --tolower country)
-    echo "Detected country: $country"
+    echo "Detected country: $country" >&2
 
     case "$XDG_SESSION_TYPE" in
         x11)
             case "$country" in
                 us | gb | fr | it | es | de | fi | jp | cn | se)
-                    echo "Setting keymap: $country"
+                    echo "Setting keymap: $country" >&2
                     ;;
                 *)
                     local c="$country"
                     country=us
-                    echo "Country '$c' not handled, falling back to '$country'"
+                    echo "Country '$c' not handled, falling back to '$country'" >&2
                     ;;
             esac
             setxkbmap "$country"
             ;;
         wayland)
-            echo "Wayland not supported"
+            case "$country" in
+                us) echo "Setting keymap: $country" >&2 ;;
+                *)  case "$XDG_CURRENT_DESKTOP" in
+                        KDE) systemsettings kcm_keyboard 2>/dev/null ;;
+                    esac
+                    ;;
+            esac
             ;;
     esac
 }
