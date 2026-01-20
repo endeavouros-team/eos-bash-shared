@@ -996,3 +996,14 @@ GetPager() {                                          # return a pager out of so
         fi
     done
 }
+
+GetCacheDir() {
+    local pconfcachedir=$(grep "^[ ]*CacheDir[ ]*=" /etc/pacman.conf | tail -n1)
+    
+    if [ "$pconfcachedir" ] ; then
+        pconfcachedir=$(echo "$pconfcachedir" | sed -E 's|^[ ]*CacheDir[ ]*=[ ]*(.*)|\1|')
+        echo "$pconfcachedir"
+    else
+        echo /var/cache/pacman/pkg/
+    fi
+}
