@@ -158,6 +158,20 @@ XfceSetWallpaper() {
     esac
 }
 
+SwaybgSetWallpaper() {
+    # if [ "$XDG_SESSION_TYPE" = wayland ] ; then
+    #     case "$DE" in
+    #         XFCE | SWAY)
+                 local ids
+                 local me=$(id -un)
+                 ids="$(/bin/ps -ef | /bin/grep "$me .* swaybg -i " | /bin/grep -wv grep | /bin/awk '{print $2}')"
+                 [ "$ids" ] && kill $ids   # wallpaper might not change without this
+                 swaybg -i "$pic" &
+    #             ;;
+    #     esac
+    # fi
+}
+
 WallpaperSetCommon() {
     # Assume:
     #    - $pic is the picture file name
@@ -206,15 +220,20 @@ WallpaperSetCommon() {
             ;;
         XFCE)
             AssertPicture endeavouros_xfce4.png no
-            XfceSetWallpaper
+            case "$XDG_SESSION_TYPE" in
+                x11)     XfceSetWallpaper ;;
+                wayland) [ -x /bin/swaybg ] || DIE "sorry, 'swaybg' is needed, please install it."
+                         SwaybgSetWallpaper
+                         echo "==> Note: run '$progname -l' to use the latest wallpaper after logging in." >&2
+                         ;;
+            esac
             ;;
 
         # Not DEs but WMs:
 
         SWAY)
             AssertPicture "$pic_default" no
-            killall swaybg   # otherwise wallpaper doesn't change!
-            swaybg -i "$pic"
+            SwaybgSetWallpaper
             ;;
         BSPWM)
             AssertPicture "$pic_default" no
@@ -398,6 +417,11 @@ Parameters() {
                 Pager "$history_of_backgrounds"
                 exit 0
                 ;;
+            --latest | -l)
+                local latest="$(tail -n1 "$history_of_backgrounds" | awk '{print $NF}')"
+                [ "$latest" ] && Main "$latest"
+                exit 0
+                ;;
             -*)
                 msg="$(printf "\n%s\n\n" "Unsupported option '$arg'." ; Usage)"
                 DIE "$msg"
@@ -420,6 +444,7 @@ Options:
     -h, --help           This help.
     --history            Select wallpaper from previously set wallpapers.
     --history-raw        Show wallpaper history fully including time stamps.
+    --latest, -l         Set the most recently used wallpaper.
 Parameters:
     <i>wallpaper-file</i>
         Wallpaper file name, 'DEFAULT', or 'ISO':
