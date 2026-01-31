@@ -70,9 +70,13 @@ GetCurrentValues() {
     fi
 
     current_period="$(grep "^OnCalendar=" $t | cut -d '=' -f 2)"
-    local -r exec_start_line="$(grep "^ExecStart=" $s | tail -n1)"
-    current_keepcount="$(echo "$exec_start_line" | sed -E 's|^ExecStart=[^ \t]+[ \t]*||')"   # try to get all paccache parameters from the ExecStart line
     current_delete_uninstalled=FALSE
+    # Note: the ExecStart= line can be a bit tricky.
+    current_keepcount="$(grep "^ExecStart=.*-rk" $s | tail -n1 | sed -E 's|.*-rk([^ ;]*).*|\1|')"           # only get the * of '-rk*' from the ExecStart= line
+    if [ -z "$current_keepcount" ] ; then
+        current_keepcount="$(grep "^ExecStart=.*keep=" $s | tail -n1 | sed -E 's|.*keep=([^ ;]*).*|\1|')"   # only get the * of 'keep=*' from the ExecStart= line
+    fi
+    [ "$current_keepcount" ] || current_keepcount=3
 
     # current_keepcount=$(eval echo ${current_keepcount})
     # PaccacheOptions_for_keep $current_keepcount
@@ -81,7 +85,7 @@ GetCurrentValues() {
     for arg in $current_keepcount ; do
         case "$arg" in
             '$PACCACHE_ARGS') args+=($PACCACHE_ARGS) ;;
-            *) args+=("$arg") ;;
+            *) args+=(-k "$arg") ;;
         esac
     done
     PaccacheOptions_for_keep "${args[@]}"
@@ -133,8 +137,6 @@ _paccache_cleaner_manager()
     local result=""
     local field_nr=1
     local indent="<tt>  </tt>"
-    local du="$(LANG=C /usr/bin/du --si -s /var/cache/pacman/pkg/ | /usr/bin/awk '{print $1}' | sed 's|\([KMGT]\)$| \1B|')"
-    local df="$(LANG=C /usr/bin/df --si | /usr/bin/grep -w /     | /usr/bin/awk '{print $4}' | sed 's|\([KMGT]\)$| \1B|')"
     local options=""
     local defaults=no
     local period=weekly keepcount=2 delete_uninstalled=FALSE
@@ -142,6 +144,9 @@ _paccache_cleaner_manager()
     local verbose=no
     local vfile=""     # temporary file for showing all commands in verbose mode
     local keepcount_max=100
+    local -r cachedir=$(GetCacheDir)
+    local du="$(LANG=C /usr/bin/du --si -s "$cachedir" 2>/dev/null | /usr/bin/awk '{print $1}' | sed 's|\([KMGT]\)$| \1B|')"
+    local df="$(LANG=C /usr/bin/df --si | /usr/bin/grep -w /       | /usr/bin/awk '{print $4}' | sed 's|\([KMGT]\)$| \1B|')"
 
     if [ ! -r $service ] ; then
         first_time=yes
