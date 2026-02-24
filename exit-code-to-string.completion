@@ -8,11 +8,11 @@ _exit_code_to_string__() {
     local cur prev words #cword split
     _init_completion -s || return
 
-    local -r apps='curl|wget'
+    local -r apps='curl|wget|makepkg'
     case "$prev" in
         "${words[0]}")  COMPREPLY=($(compgen -W "{0..9}"       -P "$cur")) ;;
         [0-9]*)         COMPREPLY=($(compgen -W "${apps//|/ }" -- "$cur")) ;;
-        $apps) ;;
+        curl|wget|makepkg) ;;
     esac
 } &&
 complete -F _exit_code_to_string__   exit-code-to-string curl-exit-code-to-string

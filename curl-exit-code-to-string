@@ -1,28 +1,66 @@
 #!/bin/bash
 
-# Convert curl (or wget) return code to human friendly text.
-# See 'man curl' (or 'man wget') for more info.
+# Convert the exit code of certain apps to human friendly text.
+# The man page of the app is used for the conversion.
+# Find the supported apps by using option --help.
+# See also the man pages of the supported apps.
 
 echo2() { echo -e "$@" >&2; }
 Exit()  { echo2 "$1"; exit "$2"; }
 
-ExitCodeToString() {             # only for: 'curl' and 'wget'
-    local -r progname=${0##*/}
-    local -r exitcode="$1"
-    local app="$2"               # optional, defaults to 'curl'
-    app=${app##*/}
-    [ "$app" ] || app=curl
+Help() {
+    cat <<EOF
+Usage:           $progname exit-code [app-name]
+                 $progname {--help | -h}
+Parameters:      exit-code     The exit code of the app.
+                 app-name      (Optional) The name of the app. Default: $defapp.
+Supported apps:  $supported_apps
+Example:         $progname 4 wget
+EOF
+    [ "$1" ] && exit "$1"
+}
 
+IsNum() { [ "$1" ] && [ -z "${1//[0-9]/}" ] ; }
+
+ExitCodeToString() {
+    local -r progname=${0##*/}
+    local -r supported_apps='curl wget makepkg'
+    local -r defapp=curl
+    local app="$defapp"               # optional, defaults to 'curl'
+    local exitcode=""
+    local -r paraerr=126              # exit code: parameter error by user
+
+    # check parameters
+    [ "$1" ] || Help $paraerr
+    while [ "$1" ] ; do
+        case "$1" in
+            [0-9]*)
+                IsNum "$1" && exitcode="$1" || Help $paraerr ;;
+            -h | --help)
+                Help 0 ;;
+            *)
+                local item
+                for item in $supported_apps ; do
+                    if [ "$1" = "$item" ] ; then
+                        app="$1"
+                        break
+                    fi
+                done
+                [ "$1" = "$item" ] || Help $paraerr
+                ;;
+        esac
+        shift
+    done
+
+    # convert number to string in the man page
     case "$app" in
         curl | wget)
+            # code and text on the same line
             LANG=C MANWIDTH=300 man $app 2>/dev/null | grep -E "^[ ]+$exitcode[ ]+" | sed -E "s|^[ ]+$exitcode[ ]+||"
-            exit 0
             ;;
-        "" | -*)
-            Exit "Usage: $progname <exit-code-from-curl-or-wget>" 125
-            ;;
-        *)
-            Exit "==> Sorry, $progname only supports apps 'curl' and 'wget'." 126
+        makepkg)
+            # code and text on different, adjacent lines
+            LANG=C MANWIDTH=300 man $app 2>/dev/null | grep -A2 -E "^[ ]+$exitcode$" | grep -v "^$" | tail -n +2 | sed -E "s|^[ ]+(.+\.)$|\1|"
             ;;
     esac
 }
