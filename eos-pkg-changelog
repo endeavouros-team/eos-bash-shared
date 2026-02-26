@@ -32,7 +32,7 @@ EOF
 }
 
 DumpPkgnames() {
-    declare -p PKG_CHANGELOGS | sed 's|\[|\n\[|g' | grep "^\[" | sed -E 's|^\[([^]]*).*|\1|'
+    declare -p PKG_CHANGELOGS | sed 's|\[|\n\[|g' | grep "^\[" | sed -E 's|^\[([^]]*).*|\1|' | sort
 }
 DumpOptions() {
     local sopts2=${sopts//:/}
@@ -73,13 +73,13 @@ SourceClFile() {
 }
 DumpParameters() {
     SourceClFile
-    DumpPkgnames
     DumpOptions
+    DumpPkgnames
 }
 
 Parameters() {
     local sopts="c:dhu"
-    local lopts="help,github,gitlab,parameters,clfile:,detect-clfile,quiet,url"
+    local lopts="clfile:,detect-clfile,github,gitlab,help,parameters,quiet,url"
     local opts=""
 
     opts="$(/usr/bin/getopt -o="$sopts" --longoptions "$lopts" --name "$progname" -- "$@")" || Usage 1
