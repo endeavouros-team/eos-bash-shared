@@ -327,6 +327,7 @@ eos_notification_all() {   # sending notification to all users
     local summary="$5"        # title
     local body="$6"           # msg
     local color="$7"          # message color (for TTY): RED, YELLOW, or "" (empty or no value means plain text)
+    local username="$8"       # optional, user who gets the notifications
 
     [ -n "$urgency" ] || urgency=normal
 
@@ -346,14 +347,19 @@ eos_notification_all() {   # sending notification to all users
         return
     fi
 
-    local users="$(eos_GetUsers)"
-    local user userid
+    local users user userid
     local cmd=()
+
+    if [ "$username" ] ; then
+        users="$username"
+    else
+        users="$(eos_GetUsers)"
+    fi
 
     for user in $users ; do
         userid=$(/usr/bin/id -u "$user")
         cmd=(
-            DISPLAY=:0
+            # DISPLAY=:0
             DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$userid/bus
             notify-send
             --icon="$icon"
