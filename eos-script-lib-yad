@@ -349,17 +349,21 @@ eos_notification_all() {   # sending notification to all users
 
     local users user userid
     local cmd=()
+    local display="" wayland_display=""
 
     if [ "$username" ] ; then
         users="$username"
     else
         users="$(eos_GetUsers)"
     fi
+    [ "$DISPLAY" ] && display="DISPLAY=$DISPLAY"
 
     for user in $users ; do
         userid=$(/usr/bin/id -u "$user")
+        wayland_display=$(GetWaylandDisplay "$userid")
         cmd=(
-            # DISPLAY=:0
+            $display                                                   # Note: format is VARIABLE=value (or empty)
+            $wayland_display                                           # Note: format is VARIABLE=value (or empty)
             DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$userid/bus
             notify-send
             --icon="$icon"
@@ -372,6 +376,13 @@ eos_notification_all() {   # sending notification to all users
 
         /usr/bin/su "$user" -c "${cmd[*]}"
     done
+}
+
+GetWaylandDisplay() {   # returns either "WAYLAND_DISPLAY=value" or ""
+    local userid="$1"
+    local wd="$(/bin/ls -1 /run/user/$userid/wayland-*.lock 2>/dev/null | sed -E "s|/run/user/$userid/(wayland-[^\.]+).lock|\1|")"
+    [ "$wd" ] && wd="WAYLAND_DISPLAY=$wd"
+    echo "$wd"
 }
 
 eos_yad_terminal() {
