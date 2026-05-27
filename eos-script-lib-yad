@@ -318,8 +318,16 @@ eos_notification() {   # sending notification to the current user
     "${cmd[@]}"
 }
 
+eos_GetUsers() {
+    local file=""
+    for file in /var/run/{u,w}tmp ; do
+        [ -e $file ] && break || file=""
+    done
+    printf "%s\n" $(/usr/bin/users $file) | sort -u
+}
+
 eos_notification_all() {   # sending notification to all users
-    eos_GetUsers() { /usr/bin/users | sed 's| |\n|g' | sort -u ; }
+    # eos_GetUsers() { /usr/bin/users | sed 's| |\n|g' | sort -u ; }
 
     local icon="$1"
     local urgency="$2"        # low, normal, critical
