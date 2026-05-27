@@ -326,9 +326,11 @@ eos_GetUsers() {
     printf "%s\n" $(/usr/bin/users $file) | sort -u
 }
 
-eos_notification_all() {   # sending notification to all users
-    # eos_GetUsers() { /usr/bin/users | sed 's| |\n|g' | sort -u ; }
+eos_notification_all_debug() {
+    [ $_notification_debug = yes ] && echo -e "==> ${FUNCNAME[1]}: debug:" "$@" >> "$_debugout"
+}
 
+eos_notification_all() {   # sending notification to all users
     local icon="$1"
     local urgency="$2"        # low, normal, critical
     local expiretime="$3"     # milliseconds
@@ -338,11 +340,22 @@ eos_notification_all() {   # sending notification to all users
     local color="$7"          # message color (for TTY): RED, YELLOW, or "" (empty or no value means plain text)
     local username="$8"       # optional, user who gets the notifications
 
+    local -r _notification_debug=yes                      # set to 'no' later
+    local -r _debugout="/tmp/${FUNCNAME[0]}-debug.log"
+    [ -e "$_debugout" ] && rm -f "$_debugout"
+
     [ -n "$urgency" ] || urgency=normal
 
     # [ "$body_to_tty" = "yes" ] && echo "==> INFO: $body" >&2     # meant to print to TTY
 
-    if [ "$XDG_SESSION_TYPE" = "tty" ] || [ -z "$DISPLAY" ] || [ "$TERM" = "linux" ] || [[ $(tty) =~ /dev/tty ]] ; then
+    if [ "$XDG_SESSION_TYPE" = "tty" ] || [ -z "$DISPLAY$WAYLAND_DISPLAY" ] || [ "$TERM" = "linux" ] || [[ $(tty) =~ /dev/tty ]] ; then
+        if [ $_notification_debug = yes ] ; then
+            [ "$XDG_SESSION_TYPE" = "tty" ] && eos_notification_all_debug "XDG_SESSION_TYPE = tty"
+            [ -z "$DISPLAY" ]               && eos_notification_all_debug "DISPLAY = ''"
+            [ -z "$WAYLAND_DISPLAY" ]       && eos_notification_all_debug "WAYLAND_DISPLAY = ''"
+            [ "$TERM" = "linux" ]           && eos_notification_all_debug "TERM = linux"
+            [[ $(tty) =~ /dev/tty ]]        && eos_notification_all_debug "/usr/bin/tty matched /dev/tty"
+        fi
         local -r C_RESET="$RESET"
         local C_ON=""
 
@@ -370,6 +383,7 @@ eos_notification_all() {   # sending notification to all users
     for user in $users ; do
         userid=$(/usr/bin/id -u "$user")
         wayland_display=$(GetWaylandDisplay "$userid")
+        eos_notification_all_debug "user = '$user'; display = '$display'; wayland_display = '$wayland_display'"
         cmd=(
             $display                                                   # Note: format is VARIABLE=value (or empty)
             $wayland_display                                           # Note: format is VARIABLE=value (or empty)
