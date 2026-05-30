@@ -23,7 +23,7 @@ Main() {
             case "$country" in
                 us) echo "Setting keymap: $country" >&2 ;;
                 *)  case "$XDG_CURRENT_DESKTOP" in
-                        KDE) systemsettings kcm_keyboard 2>/dev/null ;;
+                        KDE) ;; # systemsettings kcm_keyboard 2>/dev/null ;;    # need a better way...
                     esac
                     ;;
             esac
