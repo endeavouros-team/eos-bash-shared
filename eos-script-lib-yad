@@ -373,11 +373,14 @@ eos_notification_all() {   # sending notification to all users
     local cmd=()
     local display="" wayland_display=""
 
+    eos_notification_all_debug "username = '$username'"
     if [ "$username" ] ; then
         users="$username"
     else
         users="$(eos_GetUsers)"
     fi
+    eos_notification_all_debug "users = '$users'"
+
     [ "$DISPLAY" ] && display="DISPLAY=$DISPLAY"
 
     for user in $users ; do
