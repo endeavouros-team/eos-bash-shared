@@ -288,7 +288,7 @@ eos_workaround_fix_critical_urgency() {
     # value 0 for --expire-time does not work, any other value works (?)
     # or don't use --expire-time at all.
 
-    [ "$urgency" = critical ] || cmd+=(--expire-time="$expiretime")
+    [ "$urgency" = critical ] || cmd+=(--expire-time="'$expiretime'")
 }
 
 eos_notification() {   # sending notification to the current user
@@ -384,23 +384,24 @@ eos_notification_all() {   # sending notification to all users
     [ "$DISPLAY" ] && display="DISPLAY=$DISPLAY"
 
     for user in $users ; do
-        userid=$(/usr/bin/id -u "$user")
+        userid="$(/usr/bin/id -u "$user")"
         wayland_display=$(GetWaylandDisplay "$userid")
         eos_notification_all_debug "user = '$user'; display = '$display'; wayland_display = '$wayland_display'"
         cmd=(
             $display                                                   # Note: format is VARIABLE=value (or empty)
             $wayland_display                                           # Note: format is VARIABLE=value (or empty)
-            DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$userid/bus
+            DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$userid/bus"
             notify-send
-            --icon="$icon"
-            --urgency="$urgency"
-            --app-name="$appname"
+            --icon="'$icon'"
+            --urgency="'$urgency'"
+            --app-name="'$appname'"
             "'$summary'"
 	    "'$body'"
         )
         eos_workaround_fix_critical_urgency
 
-        /usr/bin/su "$user" -c "${cmd[*]}"
+        # /usr/bin/su "$user" -c "${cmd[*]}"
+        /usr/bin/sudo -u "$user" bash -c "${cmd[*]}"
     done
 }
 
@@ -449,6 +450,7 @@ eos_yad_terminal() {
         sakura
         ghostty
         foot           # wayland
+        wezterm
     )
     local xx
 
