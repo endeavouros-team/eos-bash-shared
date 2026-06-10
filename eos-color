@@ -14,8 +14,8 @@ EosColor() {
     case "$color" in
         "" | reset)    color="$RESET" ;;
         error | fail)  color="$RED" ;;
-        info)          color="$GREEN" ;;
         warning)       color="$YELLOW" ;;
+        info)          color="$GREEN" ;;
         tip | ok)      color="$CYAN" ;;
     esac
     case "$std" in
@@ -27,23 +27,23 @@ EosColor() {
 Help() {
     local -r progname=${0##*/}
     cat <<EOF
-Usage:      $progname [options] color-def [target-def]
-options:    -h, --help             This help. Optional.
-color-def:  Color variables defined in /etc/$progname.conf. Required.
+Usage:      $progname [Options] Color-def [Target-def]
+Options:    -h, --help             This help. Optional.
+Color-def:  Color variables defined in /etc/$progname.conf. Required.
             Special values:
                 error, fail        For errors messages (red).
                 warning            For warning messages (yellow).
                 info               For info messages (green).
                 tip, ok            For tips and OK messages (cyan).
                 "", reset          Back to "normal" colors.
-target-def  Sets the file descriptor (fd) for the output. Optional.
+Target-def: Sets the file descriptor (fd) for the output. Optional.
             Values:
-                2                  Output to fd 2.
+                2, stderr          Output to fd 2.
                 Any other value    Output to fd 1.
 Examples:
-    eos-color error 2              Sets the color of future outputs to "error" (red).
+    eos-color error stderr         Sets the color of future outputs to "error" (red).
                                    Output goes to fd 2.
-    eos-color $RED 2               Same as above, using a variable from /etc/$progname.conf.
+    eos-color \$RED 2               Same as above, using a variable from /etc/$progname.conf.
     eos-color tip                  Sets the color for future tips (for fd 1).
     eos-color reset 2              Sets future outputs to "normal" colors (for fd 2).
     eos-color                      Sets future outputs to "normal" colors (for fd 1).
