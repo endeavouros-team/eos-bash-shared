@@ -5,19 +5,24 @@ EosColor() {
     local std="$2"      # optional; stdout (=default) or stderr or 2
     local progname=${0##*/}
 
-    case "$color" in
-        -h | --help)   Help 0 ;;
-    esac
-
+    # shellcheck disable=1090
     source "/etc/$progname.conf"
 
     case "$color" in
-        "" | reset)    color="$RESET" ;;
-        error | fail)  color="$RED" ;;
-        warning)       color="$YELLOW" ;;
-        info)          color="$GREEN" ;;
-        tip | ok)      color="$CYAN" ;;
+        -h | --help) Help 0 ;;
+        $'\e['*) ;;        # "$RED"|"$GREEN"|"$YELLOW"|"$BLUE"|"$MAGENTA"|"$CYAN") ;;
+        *)
+            # allow some case insensitive reserved words
+            local color2="${color,,}"
+            case "$color2" in
+                "")                                         color="${COLORS[reset]}" ;;
+                reset|error|fail|warning|info|tip|ok)       color="${COLORS[$color2]}" ;;
+                red|green|yellow|blue|magenta|cyan)         color="${COLORS[$color2]}" ;;
+                *)                                          WARN "color-def '$color' not supported" 1 ;;
+            esac
+            ;;
     esac
+
     case "$std" in
         stderr | 2) echo -n "$color" >&2 ;;
         *)          echo -n "$color" ;;
@@ -29,26 +34,38 @@ Help() {
     cat <<EOF
 Usage:      $progname [Options] Color-def [Target-def]
 Options:    -h, --help             This help. Optional.
-Color-def:  Color variables defined in /etc/$progname.conf. Required.
+Color-def:  Color variables and reserved words defined in /etc/$progname.conf. Required.
             Special values:
-                error, fail        For errors messages (red).
-                warning            For warning messages (yellow).
-                info               For info messages (green).
-                tip, ok            For tips and OK messages (cyan).
-                "", reset          Back to "normal" colors.
+                error, fail             For errors messages (red).
+                warning                 For warning messages (yellow).
+                info                    For info messages (green).
+                tip, ok                 For tips and OK messages (cyan).
+                "", reset               Back to "normal" colors.
+                red, green, yellow,     These supported reserved words (case insensitive!) represent the respective
+                blue, magenta, cyan,    colors; certain variables (i.e. from "$RED" to "$CYAN") are supported too.
 Target-def: Sets the file descriptor (fd) for the output. Optional.
             Values:
-                2, stderr          Output to fd 2.
-                Any other value    Output to fd 1.
+                2, stderr               Output to fd 2.
+                Any other value         Output to fd 1.
 Examples:
-    eos-color error stderr         Sets the color of future outputs to "error" (red).
-                                   Output goes to fd 2.
-    eos-color \$RED 2               Same as above, using a variable from /etc/$progname.conf.
-    eos-color tip                  Sets the color for future tips (for fd 1).
-    eos-color reset 2              Sets future outputs to "normal" colors (for fd 2).
-    eos-color                      Sets future outputs to "normal" colors (for fd 1).
+    eos-color error stderr              Sets the color of future outputs to "error" (red).
+                                        Output goes to fd 2.
+    eos-color \$RED 2                    Same as above, using a variable from /etc/$progname.conf.
+    eos-colot red                       Same as above, using a reserved word from /etc/$progname.conf.
+    eos-color tip                       Sets the color for future tips (for fd 1).
+    eos-color reset 2                   Sets future outputs to "normal" colors (for fd 2).
+    eos-color                           Sets future outputs to "normal" colors (for fd 1).
+    eos-color "" 2                      Sets future outputs to "normal" colors (for fd 2).
 EOF
-    [ "$1" ] && exit $1
+    [ "$1" ] && exit "$1"
+}
+
+WARN() {
+    local message="$1"
+    local exitcode="$2"    # optional
+    local -r errlog="/tmp/$progname.errlog"
+    echo -e "==> $progname: warning: $message" >> "$errlog"
+    [ "$exitcode" ] && exit "$exitcode"
 }
 
 EosColor "$@"
