@@ -288,7 +288,10 @@ eos_workaround_fix_critical_urgency() {
     # value 0 for --expire-time does not work, any other value works (?)
     # or don't use --expire-time at all.
 
-    [ "$urgency" = critical ] || cmd+=(--expire-time="'$expiretime'")
+    case "$urgency" in
+        critical) ;;
+        *)        cmd+=(--expire-time="$expiretime") ;;
+    esac
 }
 
 eos_notification() {   # sending notification to the current user
