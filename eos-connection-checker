@@ -70,9 +70,9 @@ Main() {
         fastest="$(FastestMirror)"                        # Try the fastest ranking mirror first.
         if [ "$fastest" ] ; then
             Test "$fastest"
-            URLs=($(AllMirrors | grep -v "$fastest"))     # Fastest failed, use the actual mirrorlist without then $fastest.
+            readarray -t URLs < <(AllMirrors | grep -v "$fastest")
         else
-            URLs=("$(AllMirrors)")                        # Fastest not found, use the actual mirrorlist.
+            readarray -t URLs < <(AllMirrors)
         fi
     fi
     URLs+=("$fallback")                                   # Fallback URL if no mirrors configured.
