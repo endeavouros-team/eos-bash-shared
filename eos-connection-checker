@@ -14,7 +14,7 @@ AllMirrors()    { grep "^Server[ ]*=[ ]*https://" $ml | sed 's|^Server[ ]*=[ ]*\
 
 Test() {
     local url="$1"
-    /bin/curl --silent --fail --connect-timeout $timeout "$url" >/dev/null  # download the 'state' file from a mirror
+    /bin/curl --silent --fail --connect-timeout "$timeout" "$url" >/dev/null  # download the 'state' file from a mirror
     retval=$?
     if [ $retval -eq 0 ] ; then
         [ "$verbose" = "yes" ] && echo "==> Mirror = $url" >&2

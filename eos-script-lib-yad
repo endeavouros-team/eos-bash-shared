@@ -55,7 +55,7 @@ yad_missing_check() {
             local timeout="$2"
             [ "$timeout" ] || timeout=10000
             local msg="Some operations require yad installed."
-            eos_notification "$ICO_INFO" normal $timeout "$app" "Notification from $app" "$msg"
+            eos_notification "$ICO_INFO" normal "$timeout" "$app" "Notification from $app" "$msg"
         fi
     fi
 }
