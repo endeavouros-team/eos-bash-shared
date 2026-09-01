@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# Notify about software deprecation and removal.
+#
+# Usage: eos-deprecation-message <object-to-remove> <kill-date> <optional-user-tips>
+# Example: eos-deprecation-message eos-update-notifier 2026-09-01
+
+source /etc/eos-update-lib.bash || exit 1
+
+Notify() {
+    local cmd=(
+        notify-send
+        --icon="$1"
+        --urgency="normal"
+        --expire-time="$2"
+        --app-name="$object removal"
+        "$3"
+        "$4"
+    )
+    "${cmd[@]}"
+}
+
+Main() {
+    local -r object="$1"                   # object (app or pkg) for deprecation/removal
+    local -r kill_date="$2"                # format: YYYY-MM-DD
+    local -r showtime_deprecation=20000    # milliseconds
+    local -r showtime_removal=10000        # milliseconds
+    local msg=""
+    shift 2
+    local user_tips=""
+    [ "$1" ] && user_tips="$(printf "  -> %s\n" "$@")"      # possible tips related to removal
+
+    if EOS_DateReached "$kill_date" ; then
+        msg="$object was removed at $kill_date and is no more supported"
+        Notify dialog-error $showtime_removal "$msg" "$user_tips"       # GUI notification
+        eos-color error 2
+        echo "==> Error: $msg" >&2                                      # terminal message
+        [ "$user_tips" ] && echo "$user_tips" >&2
+        eos-color reset 2
+        return 1                                                        # indicates removal
+    else
+        msg="$object will be removed at $kill_date"
+        Notify dialog-warning $showtime_deprecation "$msg" "$user_tips"
+        eos-color warning 2
+        echo "==> Warning: $msg" >&2
+        [ "$user_tips" ] && echo "$user_tips" >&2
+        eos-color reset 2
+        return 0  # indicates deprecation
+    fi
+}
+
+Main "$@"
