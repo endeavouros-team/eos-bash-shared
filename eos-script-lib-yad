@@ -571,7 +571,6 @@ eos_yad_RunCmdTermBashOpt() {  # like eos_yad_RunCmdTermBash, but supports certa
     case "$term" in
         /usr/bin/deepin-terminal | deepin-terminal) ;;
         *)
-            _init_translations
             case "$waitopt" in
                 --no-enter-wait | no-enter-wait) ;;
                 sleep=*)
@@ -579,7 +578,12 @@ eos_yad_RunCmdTermBashOpt() {  # like eos_yad_RunCmdTermBash, but supports certa
                     echo "eos-sleep-counter $waittime"                      >> "$tmpfile"
                     ;;
                 *)
-                    echo "read -p '$(ltr updt_press_enter): '"              >> "$tmpfile"
+                    if [ -x /bin/get-legacy-id-lang-translation ] ; then
+                        echo "read -p '$(get-legacy-id-lang-translation updt_press_enter): '"    >> "$tmpfile"
+                    else
+                        _init_translations ""
+                        echo "read -p '$(ltr updt_press_enter): '"     >> "$tmpfile"
+                    fi
                     ;;
             esac
             ;;
