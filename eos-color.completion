@@ -1,0 +1,27 @@
+# bash completion for eos-color        -*- shell-script -*-
+
+_eos-color_complete() {
+    COMPREPLY=( $(compgen -W "$1" -- "$cur") )
+    [[ $COMPREPLY == *= ]] && compopt -o nospace
+    compopt -o nosort
+}
+
+_eos-color_() 
+{
+    local cur prev #words cword split
+    _init_completion -s || return
+
+    source /etc/eos-color.conf
+
+    case "$prev" in
+        stderr | stdout | 1 | 2)
+            ;;  # nothing more to complete
+        *eos-color)
+            local -r color_ids="$(eos-color --dump-color-ids)"
+            local -r opts="$(eos-color --dump-options)"
+            _eos-color_complete "$opts $color_ids" ;;
+        [a-zA-Z]*)
+            _eos-color_complete "1 stdout 2 stderr" ;;
+    esac
+}
+complete -F _eos-color_    eos-color

@@ -3,22 +3,46 @@
 EosColor() {
     local color="$1"    # one of the foreground color strings below, or a reserved word below
     local std="$2"      # optional; stdout (=default) or stderr or 2
-    local progname=${0##*/}
+    local -r progname=${0##*/}
+    local -r sysconf="/etc/$progname.conf"
+    local -r userconf="/etc/$progname.conf-user"
+    local -r errlog="/tmp/$progname.errlog"
 
     # shellcheck disable=1090
-    source "/etc/$progname.conf"
+    {
+        source "$sysconf"   || exit 1
+        source "$userconf"  || exit 1
+    }
 
+    [ "$std" ] || std="$EOS_COLORS_DEFAULT_STD"
+    case "$std" in
+        1 | 2 | stdout | stderr) ;;
+        *) WARN "output device set from '$std' to 'stdout'.\n    Tip: see file $userconf."
+           std="stdout"
+           ;;
+    esac
+
+    case "$1" in
+        -h | --help)      Help; exit 0 ;;
+        --dump-color-ids) DumpColorIds; exit 0 ;;
+        --dump-options)   DumpOptions; exit 0 ;;
+        --sample)         ColorSample; exit 0 ;;
+    esac
     case "$color" in
-        -h | --help) Help 0 ;;
-        $'\e['*) ;;        # "$RED"|"$GREEN"|"$YELLOW"|"$BLUE"|"$MAGENTA"|"$CYAN") ;;
+        $'\e['*)
+            # shellcheck disable=2153
+            color="${COLORS[reset]}$color"         # "$RED"|"$GREEN"|"$YELLOW"|"$BLUE"|"$MAGENTA"|"$CYAN")
+            ;;
         *)
             # allow some case insensitive reserved words
             local color2="${color,,}"
             case "$color2" in
                 "")                                         color="${COLORS[reset]}" ;;
-                reset|error|fail|warning|info|tip|ok)       color="${COLORS[$color2]}" ;;
-                red|green|yellow|blue|magenta|cyan)         color="${COLORS[$color2]}" ;;
-                *)                                          WARN "color-def '$color' not supported" 1 ;;
+                reset|error|fail|warning|info|tip|ok)       color="${COLORS[reset]}${COLORS[$color2]}" ;;
+                red|green|yellow|blue|magenta|cyan)         color="${COLORS[reset]}${COLORS[$color2]}" ;;
+                *)                                          WARN "color-def '$color' not supported"
+                                                            color="${COLORS[reset]}"
+                                                            ;;
             esac
             ;;
     esac
@@ -29,12 +53,37 @@ EosColor() {
     esac
 }
 
+DumpColorIds() { printf "%s\n" "${!COLORS[@]}" | sort; }
+DumpOptions()  { echo "-h --help --sample --dump-color-ids --dump-options"; }
+
+ColorSample() {
+    local color colors
+    colors=$(EosColor --dump-color-ids)
+    for color in $colors ; do
+        if true ; then
+            # faster way of using colors (directly via variables)
+            printf "%s%s%s\n" \
+                   "${COLORS[$color]}" \
+                   "$color" \
+                   "${COLORS[reset]}"
+        else
+            # alternative but slower; still recommended for most user apps
+            eos-color "$color"
+            echo "$color"
+            eos-color reset
+        fi
+    done
+}
+
 Help() {
-    local -r progname=${0##*/}
     cat <<EOF
-Usage:      $progname [Options] Color-def [Target-def]
-Options:    -h, --help             This help. Optional.
-Color-def:  Color variables and reserved words defined in /etc/$progname.conf. Required.
+Usage:      $progname [Options] Color-id [Target-def]
+Options:    Note: only one option of the the following accepted.
+            -h, --help             This help. Optional.
+            --sample               Show how the colors look.
+            --dump-color-ids       Show the names of supported reserved words for colors.
+            --dump-options         Show available options for $progname.
+Color-id:   Color variables and reserved words defined in /etc/$progname.conf. Required.
             Special values:
                 error, fail             For errors messages (red).
                 warning                 For warning messages (yellow).
@@ -42,7 +91,7 @@ Color-def:  Color variables and reserved words defined in /etc/$progname.conf. R
                 tip, ok                 For tips and OK messages (cyan).
                 "", reset               Back to "normal" colors.
                 red, green, yellow,     These supported reserved words (case insensitive!) represent the respective
-                blue, magenta, cyan,    colors; certain variables (i.e. from "$RED" to "$CYAN") are supported too.
+                blue, magenta, cyan,    colors; certain variables (i.e. from "\$RED" to "\$CYAN") are supported too.
 Target-def: Sets the file descriptor (fd) for the output. Optional.
             Values:
                 2, stderr               Output to fd 2.
@@ -51,20 +100,21 @@ Examples:
     eos-color error stderr              Sets the color of future outputs to "error" (red).
                                         Output goes to fd 2.
     eos-color \$RED 2                    Same as above, using a variable from /etc/$progname.conf.
-    eos-colot red                       Same as above, using a reserved word from /etc/$progname.conf.
+    eos-color red                       Same as above, using a reserved word from /etc/$progname.conf.
     eos-color tip                       Sets the color for future tips (for fd 1).
     eos-color reset 2                   Sets future outputs to "normal" colors (for fd 2).
     eos-color                           Sets future outputs to "normal" colors (for fd 1).
     eos-color "" 2                      Sets future outputs to "normal" colors (for fd 2).
 EOF
-    [ "$1" ] && exit "$1"
 }
 
 WARN() {
     local message="$1"
     local exitcode="$2"    # optional
-    local -r errlog="/tmp/$progname.errlog"
-    echo -e "==> $progname: warning: $message" >> "$errlog"
+    local time
+    time=$(date +%H:%M)
+    [ "$EOS_COLORS_DISPLAY_WARNINGS" = yes ] && echo -e "==> $progname: warning: $message" >&2
+    echo -e "==> [$time] $progname: warning: $message" >> "$errlog"
     [ "$exitcode" ] && exit "$exitcode"
 }
 

@@ -1,0 +1,15 @@
+#!/bin/bash
+
+## EOS_COLORS_DEFAULT_STD specifies the default output device.
+## Supported values: stdout stderr 1 2
+## Default: stdout
+#
+EOS_COLORS_DEFAULT_STD="stdout"
+
+## EOS_COLORS_DISPLAY_WARNINGS either enables or disables
+## displaying warnings from eos-color.
+## Note that warnings always go to file /tmp/eos-color.errlog.
+## Supported values: no yes
+## Default: "no" (=not displaying warnings).
+#
+EOS_COLORS_DISPLAY_WARNINGS="no"
