@@ -8,7 +8,7 @@ Verbose() { [ $verbose = yes ] && echo -e "$@" >&2 ; }
 Options() {
     local opts
     local sopts="e:hv"
-    local lopts="0x0,dpaste,termbin"       # pastebin options
+    local lopts="cnet,termbin"             # pastebin options
     lopts+=",expire:,help,verbose,no-yad"  # general options
 
     opts="$(/bin/getopt -o="$sopts" --longoptions "$lopts" --name "$progname" -- "$@")" || Usage 1
@@ -18,8 +18,11 @@ Options() {
         case "$1" in
             -h | --help)                   Usage 0 ;;
             -v | --verbose)                verbose=yes ;;
-            --0x0 | --dpaste | --termbin)  helper_options+=("$1") ;;
-            -e | --expire)                 helper_options+=(--expire="$2"); shift ;;
+            #--0x0 | --dpaste | --termbin)  helper_options+=("$1") ;;
+            --cnet | --termbin)            helper_options+=("$1") ;;
+            -e | --expire)                 # helper_options+=(--expire="$2")
+                                           shift
+                                           ;;
             --no-yad)                      helper_options+=($1) ;;
             --)                            shift; break ;;
             *)                             break ;;
@@ -37,25 +40,25 @@ Usage:
     2. input from outputs of multiple commands:
           $progname [$progname-options] "<command1> ; <command2> ; <command3> ..."
 ${progname}-options:
-    --0x0           Use only pastebin 0x0.st.
-    --dpaste        Use only pastebin dpaste.com.
+    --cnet          Use only pastebin paste.c-net.org.
     --termbin       Use only pastebin termbin.com.
     --help, -h      This help.
     --verbose, -v   Be more verbose.
-    --expire, -e    The URL will expire in X days. Default: $expire_def.
-                    Currently supported only for 0x0.st.
     --no-yad        Prevent using yad messages (useful if display cannot be opened).
 
 Without ${progname}-options the services are tried in order:
-    1. 0x0
-    2. dpaste
-    3. termbin
+    1. cnet
+    2. termbin
 until one succeeds or all fail.
 
 Examples:
-    inxi -Fza | $progname --dpaste
+    inxi -Fza | $progname --termbin
     $progname "pacman -Qm ; lsusb"
 EOF
+#    --0x0           Use only pastebin 0x0.st.
+#    --dpaste        Use only pastebin dpaste.com.
+#    --expire, -e    The URL will expire in X days. Default: $expire_def.
+#                    Currently supported only for 0x0.st.
     [ "$1" ] && exit "$1"
 }
 
@@ -63,8 +66,8 @@ Main() {
     local progname=${0##*/}
     local commands=""
     local verbose=no
-    local -r expire_def=7      # days
-    local helper_options=(--expire=$expire_def)
+    local -r expire_def=7         # days
+    local helper_options=()       # was: (--expire=$expire_def)
 
     Options "$@"
 

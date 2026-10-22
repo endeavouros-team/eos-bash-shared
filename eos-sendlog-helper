@@ -10,23 +10,32 @@ $progname sends the input (stdin) to a pastebin service.
 
 Usage: $progname [options] command-string
 Options:
-   --0x0         Uses 0x0.st
-   --dpaste      Uses dpaste.com
+   --cnet        Uses paste.c-net.org
    --termbin     Uses termbin.com
    --help, -h    This help
-   --expire=*    Specifies the URL expiration time in days.
    --no-yad      Prevent using yad messages.
 
 Without options the services are tried in order until one succeeds or all fail.
-Trial order: 0x0 dpaste termbin.
 EOF
+# Trial order: 0x0 dpaste termbin.
     [ "$1" ] && exit "$1"
+
+    # For 0x0 only:
+    #   --expire=*    Specifies the URL expiration time in days.
+
+    # --0x0         Uses 0x0.st
+    # --dpaste      Uses dpaste.com
 }
 
+cnet()        { $curl --data-binary @- "${urls[${FUNCNAME[0]}]}" ; }
+termbin()     { [ -x /bin/nc ] || return 1; nc -w $timeout "${urls[${FUNCNAME[0]}]}" 9999; }
+dpaste()      { $curl -F "content=<-" https://dpaste.com/api/v2/ ; }
+ix.io()       { $curl -F'f:1=<-'  ix.io ; }                            # 2023/12/04: fails??
+wgetpaste()   { wgetpaste -n anonymous ; }                             # 2023/12/04: fails, no more maintained??
 0x0() {
     local url code
 
-    url=$($curl --fail -F'file=@-' -Fexpires=$((expire * 24)) https://0x0.st)
+    url=$($curl -F'file=@-' -Fexpires=$((expire * 24)) "${urls[${FUNCNAME[0]}]}")
     code=$?
     if [ $code -eq 0 ] ; then
         echo "$url"
@@ -36,10 +45,6 @@ EOF
     fi
     return $code
 }
-dpaste()      { $curl -F "content=<-" https://dpaste.com/api/v2/ ; }
-termbin()     { [ -x /bin/nc ] || return 1; nc -w $timeout termbin.com 9999; }
-ix.io()       { $curl -F'f:1=<-'  ix.io ; }                            # 2023/12/04: fails??
-wgetpaste()   { wgetpaste -n anonymous ; }                             # 2023/12/04: fails, no more maintained??
 
 Tee() {
     local srv="$1"
@@ -48,11 +53,6 @@ Tee() {
 }
 
 GeneralWarning() {
-    declare -A urls=(
-        [0x0]="https://0x0.st"
-        [dpaste]="https://dpaste.com"
-        [termbin]="termbin.com"
-    )
     local txt=""
     local stop=no
 
@@ -122,15 +122,23 @@ Main() {
     local -r curl="/bin/curl --fail -Lsm $timeout"
     local count=0
     local services=(
-        0x0
-        dpaste
-        termbin
+        cnet
+        termbin      # required package 'openbsd-netcat'
+        # 0x0        # disabled 2026-06-16, see https://wiki.archlinux.org/title/List_of_applications/Internet#Pastebin_services
+        # dpaste     # certificate or PHP bug issue??
+    )
+    declare -A urls=(
+        [cnet]="https://paste.c-net.org"
+        [termbin]="termbin.com"
+        [0x0]="https://0x0.st"
+        [dpaste]="https://dpaste.com"
     )
     local expire=7     # this initial value here will always be overwritten by eos-sendlog
     local yad=""
     local infile=""
     local commands=""
     local stdin_needs_opening=no
+    local tmp=""
 
     source /usr/share/endeavouros/scripts/eos-script-lib-yad || exit 1
 
@@ -138,9 +146,11 @@ Main() {
 
     while [ "$1" ] ; do
         case "$1" in
-            --0x0 | --dpaste | --termbin)  services=("${1:2}") ;;
+            --0x0 | --dpaste)              DIE "option $1 not currently supported!" ;;  # services=("${1:2}") ;;
+            --termbin)                     services=("${1:2}") ;;
+            --cnet)                        services=("${1:2}") ;;
             --help | -h)                   Usage 0 ;;
-            --expire=*)                    expire="${1#*=}" ;;
+            # --expire=*)                    expire="${1#*=}" ;;
             --no-yad)                      yad=no ;;
             --infile=*)                    infile="${1#*=}"; break ;;
             -*)                            echo2 "Unsupported option '$1'"; exit 1 ;;
