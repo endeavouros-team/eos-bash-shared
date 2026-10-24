@@ -439,6 +439,7 @@ eos_yad_terminal() {
         xfce4-terminal
         konsole
         gnome-terminal
+        cosmic-term
         mate-terminal
         lxterminal
         deepin-terminal
@@ -596,7 +597,7 @@ eos_yad_RunCmdTermBashOpt() {  # like eos_yad_RunCmdTermBash, but supports certa
     # Try make sure terminal $term does not return to the caller immediately
     # but waits until the commands from $tmpfile are executed.
     case "$term" in
-        /usr/bin/gnome-terminal | gnome-terminal)
+        /usr/bin/gnome-terminal | gnome-terminal | /usr/bin/cosmic-term | cosmic-term)
             $term $termopts --wait -- "$tmpfile" 2>/dev/null ;;
         /usr/bin/xfce4-terminal | xfce4-terminal)
             $term --disable-server $termopts -e "$tmpfile" 2>/dev/null ;;
