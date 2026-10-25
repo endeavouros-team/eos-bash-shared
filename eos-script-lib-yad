@@ -456,6 +456,12 @@ eos_yad_terminal() {
         foot           # wayland
         wezterm
     )
+    case "$XDG_CURRENT_DESKTOP" in
+        KDE)    suitable_terminals=(konsole        "$suitable_terminals[@]") ;;
+        GNOME)  suitable_terminals=(gnome-terminal "$suitable_terminals[@]") ;;
+        XFCE)   suitable_terminals=(xfce4-terminal "$suitable_terminals[@]") ;;
+        COSMIC) suitable_terminals=(cosmic-term    "$suitable_terminals[@]") ;;
+    esac
     local xx
 
     for xx in "${suitable_terminals[@]}" ; do
