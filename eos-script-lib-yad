@@ -448,19 +448,23 @@ eos_yad_terminal() {
         alacritty
         tilix
         termite
-        xterm
         kitty
         terminology
         sakura
         ghostty
         foot           # wayland
         wezterm
+        xterm
     )
-    case "$XDG_CURRENT_DESKTOP" in
+    local de="$XDG_CURRENT_DESKTOP"
+    [ "$de" ] || de=$(eos_GetDeOrWm)
+
+    case "$de" in
         KDE)    suitable_terminals=(konsole        "${suitable_terminals[@]}") ;;
         GNOME)  suitable_terminals=(gnome-terminal "${suitable_terminals[@]}") ;;
         XFCE)   suitable_terminals=(xfce4-terminal "${suitable_terminals[@]}") ;;
         COSMIC) suitable_terminals=(cosmic-term    "${suitable_terminals[@]}") ;;
+        SWAY)   suitable_terminals=(foot           "${suitable_terminals[@]}") ;;
     esac
     local xx
 
