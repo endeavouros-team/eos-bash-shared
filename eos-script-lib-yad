@@ -589,7 +589,7 @@ eos_yad_RunCmdTermBashOpt() {  # like eos_yad_RunCmdTermBash, but supports certa
                     echo "eos-sleep-counter $waittime"                      >> "$tmpfile"
                     ;;
                 *)
-                    if [ -x /bin/get-legacy-id-lang-translation ] ; then
+                    if false && [ -x /bin/get-legacy-id-lang-translation ] ; then
                         echo "read -p '$(get-legacy-id-lang-translation updt_press_enter): '"    >> "$tmpfile"
                     else
                         _init_translations ""
